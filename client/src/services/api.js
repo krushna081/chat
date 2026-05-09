@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+const DEFAULT_API_URL = 'https://api-chat-1xj6.onrender.com/api';
+
 const getDefaultApiUrl = () => {
   if (typeof window === 'undefined') {
     return 'http://localhost:5000/api';
@@ -14,12 +16,11 @@ const getDefaultApiUrl = () => {
 
   // If the browser is visiting the backend host directly or on port 5000 already,
   // use the same origin and port.
-  if (port === '5000') {
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || port === '5000') {
     return `${protocol}//${host}/api`;
   }
 
-  // Default to the same hostname on port 5000.
-  return `${protocol}//${hostname}:5000/api`;
+  return DEFAULT_API_URL;
 };
 
 const API = axios.create({

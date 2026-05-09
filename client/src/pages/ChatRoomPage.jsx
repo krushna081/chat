@@ -26,8 +26,8 @@ export default function ChatRoomPage() {
     const initSocket = async () => {
       try {
         const token = localStorage.getItem('accessToken');
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-        const socketUrl = apiUrl.replace(/\/api$/, '') || 'http://localhost:5000';
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://api-chat-1xj6.onrender.com/api';
+        const socketUrl = apiUrl.replace(/\/api$/, '');
 
         // Clear previous room messages when switching rooms
         setMessages([]);

@@ -1,0 +1,9 @@
+# Ignore Node.js dependencies
+node_modules/
+
+# Optional OS / editor
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env

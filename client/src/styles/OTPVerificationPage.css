@@ -1,0 +1,8 @@
+.otp-page {
+  min-height: 100vh;
+}
+
+.otp-page .otp-box {
+  width: 3rem;
+  height: 3rem;
+}

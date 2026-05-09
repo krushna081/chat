@@ -1,0 +1,11 @@
+.dashboard-page {
+  min-height: 100vh;
+}
+
+.dashboard-page .chat-room-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-page .chat-room-card:hover {
+  transform: translateY(-2px);
+}

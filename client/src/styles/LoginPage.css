@@ -1,0 +1,11 @@
+.login-page {
+  min-height: 100vh;
+}
+
+.login-page .glass-dark {
+  max-width: 100%;
+}
+
+.login-page .input-primary {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}

@@ -1,0 +1,11 @@
+.landing-page {
+  min-height: 100vh;
+}
+
+.landing-page .hero-buttons button {
+  min-width: 160px;
+}
+
+.landing-page .feature-card {
+  transition: transform 0.25s ease;
+}

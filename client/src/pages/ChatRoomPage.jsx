@@ -203,58 +203,58 @@ export default function ChatRoomPage() {
   };
 
   return (
-    <div className="chatroom-page h-screen flex flex-col bg-gradient-to-br from-cyber-900 via-gray-900 to-cyber-900">
+    <div className="chatroom-page w-full h-screen flex flex-col bg-gradient-to-br from-cyber-900 via-gray-900 to-cyber-900 overflow-hidden">
       {/* Header */}
-      <div className="glass-dark border-b border-cyan-500/20 px-4 py-3 flex items-center justify-between hover-lift">
-        <div className="flex items-center gap-3">
+      <div className="shrink-0 glass-dark border-b border-cyan-500/20 px-4 py-3 flex items-center justify-between hover-lift z-20">
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => navigate('/dashboard')}
-            className="p-2 hover:bg-cyan-500/20 rounded-lg transition hover-lift"
+            className="shrink-0 p-2 hover:bg-cyan-500/20 rounded-lg transition hover-lift"
           >
             <ArrowLeft size={20} className="h-4 w-4" />
           </button>
-          <div>
-            <h2 className="text-lg font-bold text-responsive">Chat Room</h2>
-            <p className="text-xs text-gray-400">{roomId}</p>
+          <div className="min-w-0 truncate">
+            <h2 className="text-lg font-bold text-responsive truncate">Chat Room</h2>
+            <p className="text-xs text-gray-400 truncate">{roomId}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-cyber-100">
+        <div className="shrink-0 flex items-center gap-2 text-cyber-100 ml-4">
           <AlertCircle size={16} className="h-3 w-3" />
-          <span className="text-xs">E2EE Enabled</span>
+          <span className="text-xs hidden sm:inline">E2EE Enabled</span>
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3">
+      {/* Messages Area - Main scrollable container */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-3 w-full flex flex-col">
         {loading ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center flex-1">
             <p className="text-gray-400 text-responsive">Loading messages...</p>
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center flex-1">
             <p className="text-gray-400 text-responsive">No messages yet. Start the conversation!</p>
           </div>
         ) : (
           messages.map((msg, idx) => (
             <motion.div
               key={msg._id || idx}
-              className={`flex ${msg.senderId === user?._id ? 'justify-end' : 'justify-start'} px-1`}
+              className={`flex w-full ${msg.senderId === user?._id ? 'justify-end' : 'justify-start'}`}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
             >
               <div
-                className={`max-w-[85%] px-3 py-1.5 rounded-lg ${
+                className={`message-bubble ${
                   msg.senderId === user?._id
                     ? 'message-sent'
                     : 'message-received'
                 }`}
               >
-                <p className="text-xs mb-0.5 font-semibold">
+                <p className="text-xs mb-1 font-semibold opacity-90">
                   {msg.senderId === user?._id ? 'You' : msg.senderId?.username || 'Unknown'}
                 </p>
-                <p className="text-xs break-words">{msg.message || msg.encryptedMessage?.slice(0, 30) + '...'}</p>
-                <p className="text-xxs opacity-60 mt-0.5">
+                <p className="text-sm break-words whitespace-pre-wrap leading-relaxed mb-1">{msg.message || msg.encryptedMessage?.slice(0, 30) + '...'}</p>
+                <p className="text-xs opacity-70">
                   {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                 </p>
               </div>
@@ -265,20 +265,20 @@ export default function ChatRoomPage() {
         {/* Typing Indicator */}
         {typingUsers.length > 0 && (
           <motion.div
-            className="flex justify-start px-1"
+            className="flex justify-start w-full"
             animate={{ opacity: [0.5, 1] }}
             transition={{ duration: 0.6, repeat: Infinity }}
           >
-            <div className="text-xs text-gray-400">
+            <div className="text-xs text-gray-400 pl-2">
               {typingUsers.length} user{typingUsers.length > 1 ? 's' : ''} typing...
             </div>
           </motion.div>
         )}
       </div>
 
-      {/* Input Area */}
-      <div className="glass-dark border-t border-cyan-500/20 px-4 py-2 fixed-bottom-safe">
-        <div className="flex gap-2">
+      {/* Input Area - Fixed at bottom */}
+      <div className="shrink-0 glass-dark border-t border-cyan-500/20 px-4 py-3 w-full z-30 safe-area-bottom">
+        <div className="flex gap-2 items-end">
           <input
             type="text"
             value={messageInput}
@@ -293,19 +293,19 @@ export default function ChatRoomPage() {
               }
             }}
             placeholder="Type a message..."
-            className="input-primary flex-1 min-h-[44px]"
+            className="input-primary flex-1 max-h-[100px] text-sm"
           />
           <motion.button
             onClick={handleSendMessage}
             disabled={!messageInput.trim()}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="px-3 py-1.5 btn-primary font-semibold flex items-center gap-1.5 disabled:opacity-50 min-h-[44px]"
+            className="shrink-0 btn-primary font-semibold flex items-center justify-center gap-1 disabled:opacity-50 p-3 aspect-square"
           >
-            <Send size={18} className="h-4 w-4" />
+            <Send size={18} className="h-5 w-5" />
           </motion.button>
         </div>
-        <p className="text-xxs text-gray-500 mt-1.5 text-center">💚 All messages are end-to-end encrypted</p>
+        <p className="text-xs text-gray-500 mt-2 text-center opacity-70">💚 End-to-end encrypted</p>
       </div>
     </div>
   );

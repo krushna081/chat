@@ -251,46 +251,176 @@ html.light .cyber-glow {
 
 /* Input Styles */
 .input-primary {
-  @apply w-full px-4 py-2 rounded-lg bg-transparent border border-cyan-500 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-50 transition-all;
+  @apply w-full px-4 py-2 rounded-lg bg-transparent border border-cyan-500 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-50 transition-all resize-none;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  font-size: 16px; /* Prevents zoom on iOS */
 }
 
-/* Message Styles */
+.input-primary:focus {
+  scroll-margin-bottom: 200px;
+}
+
+/* Mobile text input fixes */
+@media (max-width: 640px) {
+  .input-primary {
+    font-size: 16px; /* Prevents auto-zoom on iOS */
+    padding: 0.75rem 0.875rem;
+  }
+}
+
+/* Message Styles - FIXED */
 .message-sent {
-  @apply ml-auto max-w-xs bg-cyber-100 text-cyber-900 rounded-lg rounded-tr-none px-4 py-2 animate-slide-in-bottom;
+  @apply bg-gradient-to-r from-cyber-100 to-cyan-400 text-cyber-900 rounded-lg rounded-tr-none px-4 py-2;
+  animation: messageSlideIn 0.2s ease-out;
+  box-shadow: 0 2px 8px rgba(0, 255, 136, 0.2);
+  max-width: 90%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .message-received {
-  @apply mr-auto max-w-xs bg-gray-800 text-white rounded-lg rounded-tl-none px-4 py-2 animate-slide-in-top;
+  @apply bg-gray-700/60 text-white rounded-lg rounded-tl-none px-4 py-2;
+  animation: messageSlideIn 0.2s ease-out;
+  box-shadow: 0 2px 8px rgba(100, 100, 150, 0.2);
+  max-width: 90%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(100, 100, 150, 0.3);
 }
 
-/* Mobile / Safe area fixes */
+/* Mobile / Safe area fixes - UPDATED */
 .fixed-bottom-safe {
-  position: sticky;
+  position: relative;
   bottom: 0;
   z-index: 40;
-  padding-bottom: env(safe-area-inset-bottom, 12px);
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  width: 100%;
 }
 
 /* Increase tappable areas and scale down for very small screens */
 @media (max-width: 640px) {
   .btn-primary, .btn-secondary {
-    @apply w-full py-3 text-base;
+    @apply py-2.5 text-sm min-h-[44px];
   }
 
   .input-primary {
-    @apply px-4 py-3 text-base;
+    @apply px-3 py-2.5 text-base min-h-[44px];
   }
 
   .glass-dark {
-    padding: 1rem !important;
+    padding: 0.75rem 1rem;
   }
 
   .max-w-md {
     max-width: 90% !important;
   }
+
+  /* Better message bubble sizing on mobile */
+  .message-bubble {
+    max-width: 95%;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.875rem;
+  }
+
+  /* Header adjustments for mobile */
+  .chatroom-page > div:first-child {
+    padding: 0.75rem 1rem;
+  }
+
+  h2 {
+    font-size: 1.125rem;
+  }
+
+  /* Better spacing in chat messages */
+  .chatroom-page > div:nth-child(2) {
+    padding: 1rem 0.75rem;
+    gap: 0.75rem;
+  }
+
+  /* Input area adjustments */
+  .chatroom-page > div:last-child {
+    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+  }
+
+  /* Reduce excessive gaps on mobile */
+  .space-y-3 {
+    --space-y: 0.75rem;
+  }
+}
+
+/* Very small screens (< 360px) */
+@media (max-width: 360px) {
+  .message-bubble {
+    max-width: 100%;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .message-bubble p {
+    font-size: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .btn-primary, .btn-secondary {
+    font-size: 0.75rem;
+    padding: 0.5rem;
+  }
+
+  h2 {
+    font-size: 1rem;
+  }
+
+  .text-xs {
+    font-size: 0.65rem;
+  }
+}
+
+/* Tablet and larger screens */
+@media (min-width: 768px) {
+  .message-bubble {
+    max-width: 60%;
+  }
+}
+
+/* Landscape mode adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  .chatroom-page > div:nth-child(2) {
+    padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .message-bubble {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .chatroom-page > div:first-child {
+    padding: 0.5rem;
+  }
+
+  .chatroom-page > div:last-child {
+    padding: 0.5rem;
+  }
 }
 
 /* Improve visible focus on mobile keyboards */
 input:focus, textarea:focus {
-  scroll-margin-bottom: 120px;
+  scroll-margin-bottom: 200px;
+}
+
+/* Prevent double-tap zoom on buttons */
+button, input {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Better text selection in messages */
+.message-bubble {
+  -webkit-user-select: text;
+  user-select: text;
 }

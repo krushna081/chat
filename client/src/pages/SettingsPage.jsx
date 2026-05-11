@@ -81,8 +81,10 @@ export default function SettingsPage() {
       return;
     }
 
-    // Convert to base64
     const reader = new FileReader();
+    reader.onerror = () => {
+      toast.error('Failed to read image file');
+    };
     reader.onload = async () => {
       const base64 = reader.result;
       setAvatarLoading(true);
@@ -93,7 +95,9 @@ export default function SettingsPage() {
         localStorage.setItem('user', JSON.stringify(updatedUser));
         toast.success('Profile picture updated');
       } catch (error) {
-        toast.error(error.response?.data?.message || 'Failed to upload profile picture');
+        console.error('Avatar upload error:', error);
+        const errorMessage = error?.response?.data?.message || 'Failed to upload profile picture';
+        toast.error(errorMessage);
       } finally {
         setAvatarLoading(false);
       }

@@ -292,3 +292,108 @@ html.blue .sender-avatar-initials {
 html.black .sender-avatar-initials {
   background: linear-gradient(135deg, #1a2e25, #0a1a14);
 }
+
+/* WhatsApp-style Message Bubbles */
+.message-bubble {
+  padding: 8px 12px;
+  border-radius: 18px;
+  max-width: 75%;
+  position: relative;
+  word-wrap: break-word;
+}
+
+.message-sent {
+  background: linear-gradient(135deg, #00a884, #00cfa6);
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+  margin-right: 4px;
+}
+
+.message-received {
+  background: #262f36;
+  color: #e9edef;
+  border-bottom-left-radius: 4px;
+  margin-left: 4px;
+}
+
+html.light .message-sent,
+html.white .message-sent {
+  background: linear-gradient(135deg, #128c7e, #25d366);
+}
+
+html.light .message-received,
+html.white .message-received {
+  background: #ffffff;
+  color: #111b21;
+}
+
+html.blue .message-sent {
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+}
+
+html.blue .message-received {
+  background: #1e3a5f;
+  color: #e0f2fe;
+}
+
+html.black .message-sent {
+  background: linear-gradient(135deg, #1a2e25, #0f1f17);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+html.black .message-received {
+  background: #0a0a0a;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.msg-sender {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #00a884;
+}
+
+html.light .msg-sender,
+html.white .msg-sender {
+  color: #128c7e;
+}
+
+html.blue .msg-sender {
+  color: #38bdf8;
+}
+
+html.black .msg-sender {
+  color: #22c55e;
+}
+
+.msg-text {
+  font-size: 14.5px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.msg-time {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 4px;
+  display: block;
+}
+
+.message-sent .msg-time {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.message-received .msg-time {
+  color: #8696a0;
+}
+
+html.light .message-received .msg-time,
+html.white .message-received .msg-time {
+  color: #667781;
+}
+
+/* Message spacing */
+.chatroom-messages-area > div {
+  margin-bottom: 2px;
+}

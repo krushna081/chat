@@ -7,6 +7,11 @@ const otpSchema = new mongoose.Schema(
       required: true,
       match: [/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/, 'Invalid email format'],
     },
+    type: {
+      type: String,
+      enum: ['verification', 'password_reset'],
+      default: 'verification',
+    },
     hashedOtp: {
       type: String,
       required: true,
@@ -14,7 +19,6 @@ const otpSchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
       required: true,
-      index: { expires: 0 }, // Auto-delete after expiration
     },
     attempts: {
       type: Number,
@@ -31,5 +35,9 @@ const otpSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Index for faster queries and auto-delete expired OTPs
+otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+otpSchema.index({ email: 1, type: 1 });
 
 export default mongoose.model('OTP', otpSchema);

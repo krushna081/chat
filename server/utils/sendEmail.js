@@ -74,11 +74,8 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
       ? process.env.RESEND_TEST_EMAIL
       : email;
 
-    console.log('Sending password reset to:', recipient);
-    console.log('From address:', fromAddress);
-    console.log('Has RESEND_API_KEY:', !!process.env.RESEND_API_KEY);
-
-    const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+    const CLIENT_URL = process.env.CLIENT_URL || 'https://chat3-kappa.vercel.app';
+    const resetUrl = `${CLIENT_URL}/reset-password?token=${resetToken}`;
 
     const response = await axios.post('https://api.resend.com/emails', {
       from: fromAddress,

@@ -460,3 +460,112 @@ html.black .footer-link:hover {
     font-size: 20px;
   }
 }
+
+/* Forgot Password Link */
+.forgot-password-link {
+  background: none;
+  border: none;
+  color: #8696a0;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: -8px;
+  margin-bottom: 16px;
+  padding: 4px 0;
+  transition: color 0.15s;
+  text-align: left;
+}
+
+.forgot-password-link:hover {
+  color: #00a884;
+}
+
+html.light .forgot-password-link,
+html.white .forgot-password-link {
+  color: #667781;
+}
+
+html.light .forgot-password-link:hover,
+html.white .forgot-password-link:hover {
+  color: #128c7e;
+}
+
+html.blue .forgot-password-link {
+  color: #7dd3fc;
+}
+
+html.blue .forgot-password-link:hover {
+  color: #38bdf8;
+}
+
+html.black .forgot-password-link {
+  color: #a1a1aa;
+}
+
+html.black .forgot-password-link:hover {
+  color: #22c55e;
+}
+
+/* Forgot Password Back Button */
+.forgot-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: #8696a0;
+  font-size: 14px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  padding: 8px 0;
+  transition: color 0.15s;
+}
+
+.forgot-back-btn:hover {
+  color: #00a884;
+}
+
+html.light .forgot-back-btn,
+html.white .forgot-back-btn {
+  color: #667781;
+}
+
+html.light .forgot-back-btn:hover,
+html.white .forgot-back-btn:hover {
+  color: #128c7e;
+}
+
+html.blue .forgot-back-btn {
+  color: #7dd3fc;
+}
+
+html.blue .forgot-back-btn:hover {
+  color: #38bdf8;
+}
+
+html.black .forgot-back-btn {
+  color: #a1a1aa;
+}
+
+html.black .forgot-back-btn:hover {
+  color: #22c55e;
+}
+
+/* Input hint */
+.input-hint {
+  font-size: 12px;
+  color: #667781;
+  margin-top: 6px;
+}
+
+html.light .input-hint,
+html.white .input-hint {
+  color: #8696a0;
+}
+
+html.blue .input-hint {
+  color: #7dd3fc;
+}
+
+html.black .input-hint {
+  color: #71717a;
+}

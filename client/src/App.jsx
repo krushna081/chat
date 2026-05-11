@@ -8,6 +8,7 @@ import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import OTPVerificationPage from '@/pages/OTPVerificationPage';
+import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import DashboardPage from '@/pages/DashboardPage';
 import ChatRoomPage from '@/pages/ChatRoomPage';
 import SettingsPage from '@/pages/SettingsPage';
@@ -49,18 +50,19 @@ const ProtectedRoute = ({ children }) => {
 };
 
 export default function App() {
-  const { isAuthenticated, setUser } = useAuthStore();
+  const { isAuthenticated, setUser, initializeAuth } = useAuthStore();
   const { theme } = useThemeStore();
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
+      initializeAuth();
     }
 
     document.documentElement.classList.remove('dark', 'light', 'cyber', 'blue', 'black', 'white');
     document.documentElement.classList.add(theme || 'dark');
-  }, [theme, setUser]);
+  }, [theme, setUser, initializeAuth]);
 
   return (
     <Router>
@@ -79,6 +81,7 @@ export default function App() {
           <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage />} />
           <Route path="/signup" element={isAuthenticated ? <Navigate to="/dashboard" /> : <SignupPage />} />
           <Route path="/verify-otp" element={<OTPVerificationPage />} />
+          <Route path="/reset-password" element={isAuthenticated ? <Navigate to="/dashboard" /> : <ResetPasswordPage />} />
           <Route path="/how-it-works" element={isAuthenticated ? <Navigate to="/dashboard" /> : <HowItWorksPage />} />
 
           <Route

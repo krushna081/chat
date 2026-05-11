@@ -15,7 +15,14 @@ export const verifyOTP = async (otp, hashedOtp) => {
   return await bcryptjs.compare(otp, hashedOtp);
 };
 
-export const generateTokens = (userId) => {
+export const generateTokens = (userId, type = 'access') => {
+  if (type === 'reset') {
+    const resetToken = jwt.sign({ id: userId }, process.env.JWT_SECRET || 'your-secret-key', {
+      expiresIn: '15m',
+    });
+    return { accessToken: resetToken, refreshToken: null };
+  }
+
   const accessToken = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: '15m',
   });

@@ -1,11 +1,29 @@
 import { create } from 'zustand';
 import { authAPI, chatAPI, userAPI } from '../services/api.js';
 
-export const useAuthStore = create((set) => ({
+export const useAuthStore = create((set, get) => ({
   user: null,
   isAuthenticated: false,
-  loading: false,
+  loading: true,
   error: null,
+
+  initializeAuth: async () => {
+    const savedUser = localStorage.getItem('user');
+    const savedToken = localStorage.getItem('accessToken');
+    
+    if (savedUser && savedToken) {
+      try {
+        await get().refreshUser();
+        set({ loading: false });
+      } catch (error) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('accessToken');
+        set({ user: null, isAuthenticated: false, loading: false });
+      }
+    } else {
+      set({ loading: false });
+    }
+  },
 
   login: async (email, password) => {
     set({ loading: true, error: null });
@@ -32,12 +50,12 @@ export const useAuthStore = create((set) => ({
   logout: async () => {
     try {
       await authAPI.logout();
-      set({ user: null, isAuthenticated: false });
-      localStorage.removeItem('user');
-      localStorage.removeItem('accessToken');
     } catch (error) {
       console.error('Logout error:', error);
     }
+    set({ user: null, isAuthenticated: false });
+    localStorage.removeItem('user');
+    localStorage.removeItem('accessToken');
   },
 
   signup: async (username, email, password) => {
@@ -78,10 +96,39 @@ export const useAuthStore = create((set) => ({
   refreshUser: async () => {
     try {
       const response = await userAPI.getProfile();
-      set({ user: response.data.user });
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      const userData = response.data.user;
+      set({ user: userData, isAuthenticated: true });
+      localStorage.setItem('user', JSON.stringify(userData));
+      return userData;
     } catch (error) {
       console.error('Refresh user error:', error);
+      throw error;
+    }
+  },
+
+  forgotPassword: async (email) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await authAPI.forgotPassword({ email });
+      set({ loading: false });
+      return response.data;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to send reset email';
+      set({ error: errorMsg, loading: false });
+      throw new Error(errorMsg);
+    }
+  },
+
+  resetPassword: async (token, newPassword) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await authAPI.resetPassword({ token, newPassword });
+      set({ loading: false });
+      return response.data;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to reset password';
+      set({ error: errorMsg, loading: false });
+      throw new Error(errorMsg);
     }
   },
 

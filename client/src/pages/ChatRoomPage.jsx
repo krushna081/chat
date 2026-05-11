@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuthStore, useChatStore } from '@/context/store';
@@ -8,6 +8,25 @@ import { io } from 'socket.io-client';
 import { ArrowLeft, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { encryptMessage, decryptMessage, getStoredKey, storeEncryptionKey, importKey } from '@/utils/encryption';
+
+const MessageBubble = memo(({ msg, isSent, senderName }) => (
+  <motion.div
+    className={`flex w-full px-2 sm:px-4 ${isSent ? 'justify-end' : 'justify-start'}`}
+    initial={{ opacity: 0, y: 6 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.18 }}
+    layout
+  >
+    <div className={`message-bubble ${isSent ? 'message-sent' : 'message-received'}`}>
+      {senderName && <p className="msg-sender">{senderName}</p>}
+      <p className="msg-text">{msg.message || msg.encryptedMessage?.slice(0, 30) + '...'}</p>
+      <p className="msg-time">
+        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        {isSent && <span style={{ marginLeft: 3, fontSize: 10 }}>&#10003;&#10003;</span>}
+      </p>
+    </div>
+  </motion.div>
+));
 
 export default function ChatRoomPage() {
   const { roomId } = useParams();
@@ -19,25 +38,41 @@ export default function ChatRoomPage() {
   const [loading, setLoading] = useState(false);
   const [socket, setSocket] = useState(null);
   const [encryptionKey, setEncryptionKey] = useState(null);
+  const [isMounted, setIsMounted] = useState(false);
+  
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const socketRef = useRef(null);
+  
+  const userId = useMemo(() => user?._id || user?.id, [user?._id, user?.id]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    if (isMounted) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [isMounted]);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
   useEffect(() => {
+    let isConnected = false;
+    let newSocket = null;
+
     const initSocket = async () => {
       try {
         const token = localStorage.getItem('accessToken');
         const apiUrl = import.meta.env.VITE_API_URL || 'https://api-chat-1xj6.onrender.com/api';
         const socketUrl = apiUrl.replace(/\/api$/, '');
 
-        setMessages([]);
+        if (!isMounted) return;
 
         try {
           const joinResp = await chatAPI.joinRoom({ roomId });
@@ -45,19 +80,28 @@ export default function ChatRoomPage() {
           if (roomInfo?.roomKey) {
             storeEncryptionKey(roomInfo.roomKey, roomId);
             const imported = await importKey(roomInfo.roomKey);
-            setEncryptionKey(imported);
+            if (isMounted) setEncryptionKey(imported);
           }
         } catch (e) {
-          console.warn('Could not join room via API:', e?.response?.data || e.message || e);
+          console.warn('Could not join room via API');
         }
 
-        const newSocket = io(socketUrl, { auth: { token } });
+        newSocket = io(socketUrl, { 
+          auth: { token },
+          transports: ['websocket', 'polling'],
+          reconnection: true,
+          reconnectionAttempts: 3,
+          reconnectionDelay: 1000,
+        });
 
         newSocket.on('connect', () => {
-          newSocket.emit('join_room', roomId);
+          if (isMounted) {
+            newSocket.emit('join_room', roomId);
+          }
         });
 
         newSocket.on('receive_message', async (data) => {
+          if (!isMounted) return;
           try {
             if (data.message) {
               addMessage({ ...data, message: data.message });
@@ -79,27 +123,39 @@ export default function ChatRoomPage() {
         });
 
         newSocket.on('user_typing', (data) => {
-          if (data.userId !== user?._id) {
+          if (isMounted && data.userId !== user?._id) {
             addTypingUser(data.userId);
           }
         });
 
         newSocket.on('user_stopped_typing', (data) => {
-          removeTypingUser(data.userId);
+          if (isMounted) {
+            removeTypingUser(data.userId);
+          }
         });
 
-        setSocket(newSocket);
+        if (isMounted) {
+          socketRef.current = newSocket;
+          setSocket(newSocket);
+        } else {
+          newSocket.disconnect();
+        }
       } catch (error) {
-        toast.error('Connection error');
+        if (isMounted) {
+          toast.error('Connection error');
+        }
       }
     };
 
     initSocket();
 
     return () => {
-      socket?.disconnect();
+      isConnected = false;
+      if (newSocket) {
+        newSocket.disconnect();
+      }
     };
-  }, [roomId, user, addMessage, addTypingUser, removeTypingUser, setMessages]);
+  }, [roomId, user?._id, isMounted, addMessage, addTypingUser, removeTypingUser]);
 
   useEffect(() => {
     const loadKey = async () => {
@@ -145,7 +201,43 @@ export default function ChatRoomPage() {
     fetchMessages();
   }, [roomId, setMessages]);
 
-  const handleSendMessage = async () => {
+  const renderMessages = useCallback(() => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-sm opacity-50">Loading messages...</div>
+        </div>
+      );
+    }
+
+    if (messages.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center opacity-50">
+            <div className="text-4xl mb-3">&#128172;</div>
+            <p className="text-sm">No messages yet. Say hi!</p>
+          </div>
+        </div>
+      );
+    }
+
+    return messages.map((msg, idx) => {
+      const currentUserId = userId || user?._id;
+      const isSent = msg.senderId === currentUserId || msg.senderId === String(currentUserId);
+      const senderName = isSent ? null : (msg.senderName || msg.sender || 'Unknown');
+
+      return (
+        <MessageBubble
+          key={msg._id || idx}
+          msg={msg}
+          isSent={isSent}
+          senderName={senderName}
+        />
+      );
+    });
+  }, [messages, loading, userId, user]);
+
+  const handleSendMessage = useCallback(async () => {
     if (!messageInput.trim() || !socket) return;
 
     const useEncryption = import.meta.env.VITE_USE_ENCRYPTION !== 'false';
@@ -178,77 +270,33 @@ export default function ChatRoomPage() {
     } catch (error) {
       toast.error('Failed to send message');
     }
-  };
+  }, [messageInput, socket, roomId, encryptionKey, user, addMessage]);
 
-  const handleTyping = () => {
+  const handleTyping = useCallback(() => {
     if (socket) {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
       socket.emit('typing', roomId);
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('stop_typing', roomId);
+      }, 2000);
     }
-  };
+  }, [socket, roomId]);
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
-  };
+  }, [handleSendMessage]);
 
-  const autoResize = (e) => {
+  const autoResize = useCallback((e) => {
     setMessageInput(e.target.value);
     const textarea = e.target;
     textarea.style.height = 'auto';
     textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
-  };
-
-  const formatTime = (dateStr) => {
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const renderMessages = () => {
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-sm opacity-50">Loading messages...</div>
-        </div>
-      );
-    }
-
-    if (messages.length === 0) {
-      return (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center opacity-50">
-            <div className="text-4xl mb-3">&#128172;</div>
-            <p className="text-sm">No messages yet. Say hi!</p>
-          </div>
-        </div>
-      );
-    }
-
-    return messages.map((msg, idx) => {
-      const isSent = msg.senderId === user?._id;
-      const senderName = isSent ? null : (msg.senderName || 'Unknown');
-
-      return (
-        <motion.div
-          key={msg._id || idx}
-          className={`flex w-full px-2 sm:px-4 ${isSent ? 'justify-end' : 'justify-start'}`}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.18 }}
-        >
-          <div className={`message-bubble ${isSent ? 'message-sent' : 'message-received'}`}>
-            {senderName && <p className="msg-sender">{senderName}</p>}
-            <p className="msg-text">{msg.message || msg.encryptedMessage?.slice(0, 30) + '...'}</p>
-            <p className="msg-time">
-              {formatTime(msg.createdAt)}
-              {isSent && <span style={{ marginLeft: 3, fontSize: 10 }}>&#10003;&#10003;</span>}
-            </p>
-          </div>
-        </motion.div>
-      );
-    });
-  };
+  }, []);
 
   return (
     <div className="chatroom-page">

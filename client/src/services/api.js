@@ -9,13 +9,10 @@ const getDefaultApiUrl = () => {
 
   const { protocol, hostname, host, port } = window.location;
 
-  // Use the same tunneled host if the frontend is served via a dev tunnels URL.
   if (hostname.endsWith('.devtunnels.ms')) {
     return `${protocol}//${host}/api`;
   }
 
-  // If the browser is visiting the backend host directly or on port 5000 already,
-  // use the same origin and port.
   if (hostname === 'localhost' || hostname === '127.0.0.1' || port === '5000') {
     return `${protocol}//${host}/api`;
   }
@@ -26,7 +23,22 @@ const getDefaultApiUrl = () => {
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_URL || getDefaultApiUrl(),
   withCredentials: true,
+  timeout: 15000,
 });
+
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
 
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
@@ -36,6 +48,48 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
+API.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return API(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const response = await API.post('/auth/refresh');
+        const { accessToken } = response.data;
+        localStorage.setItem('accessToken', accessToken);
+        processQueue(null, accessToken);
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return API(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        localStorage.removeItem('user');
+        localStorage.removeItem('accessToken');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 // Auth endpoints
 export const authAPI = {
   signup: (data) => API.post('/auth/signup', data),
@@ -44,6 +98,8 @@ export const authAPI = {
   logout: () => API.post('/auth/logout'),
   refreshToken: () => API.post('/auth/refresh'),
   resendOTP: (data) => API.post('/auth/resend-otp', data),
+  forgotPassword: (data) => API.post('/auth/forgot-password', data),
+  resetPassword: (data) => API.post('/auth/reset-password', data),
 };
 
 // Chat endpoints

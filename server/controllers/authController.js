@@ -8,7 +8,7 @@ import {
   verifyRefreshToken,
   validatePassword,
 } from '../utils/auth.js';
-import { sendOTPEmail } from '../utils/sendEmail.js';
+import { sendOTPEmail, sendPasswordResetEmail } from '../utils/sendEmail.js';
 
 export const signup = async (req, res) => {
   try {
@@ -243,6 +243,81 @@ export const resendOtp = async (req, res) => {
     res.status(200).json({ success: true, message: 'OTP resent' });
   } catch (error) {
     console.error('Resend OTP error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    console.log('Forgot password request for:', email);
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email });
+    console.log('User found:', user ? 'yes' : 'no');
+    
+    if (!user) {
+      return res.status(200).json({ 
+        success: true, 
+        message: 'If the email exists, a reset link will be sent' 
+      });
+    }
+
+    const resetToken = generateTokens(user._id, 'reset').accessToken;
+    console.log('Generated reset token, sending email...');
+    
+    await sendPasswordResetEmail(email, resetToken);
+    console.log('Email sent successfully');
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'If the email exists, a reset link will be sent' 
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    console.error('Error details:', error.response?.data || error.message);
+    res.status(500).json({ success: false, message: 'Failed to send reset email' });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Token and new password are required' });
+    }
+
+    if (!validatePassword(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must contain uppercase, lowercase, number, and special character',
+      });
+    }
+
+    let decoded;
+    try {
+      const jwt = await import('jsonwebtoken');
+      decoded = jwt.default.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    } catch (e) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'User not found' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({ success: true, message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Reset password error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

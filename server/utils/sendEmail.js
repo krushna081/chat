@@ -66,3 +66,82 @@ const generateOTPEmailTemplate = (otp) => {
     </html>
   `;
 };
+
+export const sendPasswordResetEmail = async (email, resetToken) => {
+  try {
+    const fromAddress = process.env.EMAIL_FROM || 'SecureChat <onboarding@krushna081.online>';
+    const recipient = (process.env.NODE_ENV !== 'production' && process.env.RESEND_TEST_EMAIL)
+      ? process.env.RESEND_TEST_EMAIL
+      : email;
+
+    console.log('Sending password reset to:', recipient);
+    console.log('From address:', fromAddress);
+    console.log('Has RESEND_API_KEY:', !!process.env.RESEND_API_KEY);
+
+    const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+
+    const response = await axios.post('https://api.resend.com/emails', {
+      from: fromAddress,
+      to: recipient,
+      subject: 'Reset Your SecureChat Password',
+      html: generatePasswordResetEmailTemplate(resetUrl),
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log('Resend API response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Password reset email error:');
+    console.error('- Status:', error.response?.status);
+    console.error('- Data:', error.response?.data);
+    console.error('- Message:', error.message);
+    throw new Error('Failed to send password reset email');
+  }
+};
+
+const generatePasswordResetEmailTemplate = (resetUrl) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; background: #1a1a1a; color: #fff; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #ff6b6b, #feca57); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; color: #000; }
+          .content { background: #2a2a2a; padding: 30px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; background: #00ff88; color: #000; padding: 15px 30px; text-decoration: none; font-weight: bold; border-radius: 8px; margin: 20px 0; }
+          .warning { background: #ff4444; padding: 15px; border-radius: 5px; margin: 20px 0; font-size: 14px; }
+          .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #888; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🔑 Password Reset Request</h1>
+          </div>
+          <div class="content">
+            <p>We received a request to reset your SecureChat password.</p>
+            <p>Click the button below to create a new password:</p>
+            <div style="text-align: center;">
+              <a href="${resetUrl}" class="button">Reset Password</a>
+            </div>
+            <p>Or copy and paste this link in your browser:</p>
+            <p style="word-break: break-all; color: #00d4ff;">${resetUrl}</p>
+            <div class="warning">
+              ⚠️ This link will expire in 15 minutes. If you didn't request this, please ignore this email.
+            </div>
+            <p>If you didn't request a password reset, your account may be compromised. Please change your password immediately.</p>
+            <div class="footer">
+              <p>&copy; 2024 SecureChat. All rights reserved.</p>
+              <p>This is an automated message, please do not reply.</p>
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+};

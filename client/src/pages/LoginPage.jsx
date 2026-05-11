@@ -57,34 +57,57 @@ export default function LoginPage() {
   const handleVerifyResetOTP = async (e) => {
     e.preventDefault();
     
-    if (!resetOtp.trim()) {
+    const otpValue = resetOtp.trim();
+    const passwordValue = newPassword.trim();
+    const confirmValue = confirmPassword.trim();
+
+    if (!otpValue) {
       toast.error('Please enter the OTP');
       return;
     }
-    if (!newPassword.trim()) {
+    if (otpValue.length !== 6) {
+      toast.error('OTP must be 6 digits');
+      return;
+    }
+    if (!passwordValue) {
       toast.error('Please enter a new password');
       return;
     }
-    if (newPassword !== confirmPassword) {
+    if (passwordValue !== confirmValue) {
       toast.error('Passwords do not match');
       return;
     }
-    if (newPassword.length < 8) {
+    if (passwordValue.length < 8) {
       toast.error('Password must be at least 8 characters');
       return;
     }
 
+    // Check password requirements
+    const hasUpper = /[A-Z]/.test(passwordValue);
+    const hasLower = /[a-z]/.test(passwordValue);
+    const hasNumber = /[0-9]/.test(passwordValue);
+    const hasSpecial = /[@$!%*?&]/.test(passwordValue);
+    
+    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+      toast.error('Password must contain uppercase, lowercase, number, and special character');
+      return;
+    }
+
     setForgotLoading(true);
+    console.log('Sending reset request:', { email: forgotEmail, otp: otpValue, passwordProvided: !!passwordValue });
+    
     try {
-      await verifyResetOTP(forgotEmail, resetOtp, newPassword);
-      toast.success('Password reset successful! Please login.');
+      const result = await verifyResetOTP(forgotEmail, otpValue, passwordValue);
+      console.log('Reset result:', result);
+      toast.success('Password reset successful! Please login with your new password.');
       setForgotStep(0);
       setForgotEmail('');
       setResetOtp('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      toast.error(error.message);
+      console.error('Reset error:', error);
+      toast.error(error.message || 'Failed to reset password. Please try again.');
     } finally {
       setForgotLoading(false);
     }

@@ -44,7 +44,7 @@ const userSchema = new mongoose.Schema(
     },
     theme: {
       type: String,
-      enum: ['dark', 'blue', 'white'],
+      enum: ['dark', 'light', 'cyber', 'blue', 'black', 'white'],
       default: 'dark',
     },
     notificationMuted: {

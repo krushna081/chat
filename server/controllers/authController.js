@@ -298,11 +298,16 @@ export const verifyResetOtp = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
 
+    console.log('verifyResetOtp called:', { email, otpProvided: !!otp, newPasswordProvided: !!newPassword });
+
     if (!email || !otp || !newPassword) {
       return res.status(400).json({ success: false, message: 'Email, OTP, and new password are required' });
     }
 
-    if (!validatePassword(newPassword)) {
+    const passwordValid = validatePassword(newPassword);
+    console.log('Password validation:', passwordValid, 'for:', newPassword);
+    
+    if (!passwordValid) {
       return res.status(400).json({
         success: false,
         message: 'Password must contain uppercase, lowercase, number, and special character',
@@ -310,19 +315,23 @@ export const verifyResetOtp = async (req, res) => {
     }
 
     const otpRecord = await OTP.findOne({ email, type: 'password_reset' });
+    console.log('OTP record found:', !!otpRecord);
+    
     if (!otpRecord) {
-      return res.status(400).json({ success: false, message: 'OTP expired or not found' });
+      return res.status(400).json({ success: false, message: 'OTP expired or not found. Please request a new OTP.' });
     }
 
     if (otpRecord.attempts >= 5) {
-      return res.status(400).json({ success: false, message: 'Maximum attempts exceeded' });
+      return res.status(400).json({ success: false, message: 'Maximum attempts exceeded. Please request a new OTP.' });
     }
 
     const isOtpValid = await verifyOTP(otp, otpRecord.hashedOtp);
+    console.log('OTP validation result:', isOtpValid);
+    
     if (!isOtpValid) {
       otpRecord.attempts += 1;
       await otpRecord.save();
-      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+      return res.status(400).json({ success: false, message: 'Invalid OTP. Please check and try again.' });
     }
 
     const user = await User.findOne({ email });
@@ -332,6 +341,7 @@ export const verifyResetOtp = async (req, res) => {
 
     user.password = newPassword;
     await user.save();
+    console.log('Password updated for user:', email);
 
     await OTP.deleteOne({ email, type: 'password_reset' });
 

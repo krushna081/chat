@@ -17,13 +17,14 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const CLIENT_URL = process.env.CLIENT_URL || 'https://chat-khaki-two-48.vercel.app';
 const LOCALHOST_ORIGINS = [
   CLIENT_URL,
   'http://localhost:5173',
   'http://localhost:5182',
   'http://localhost:5184',
   'http://localhost:5185',
+  'https://chat-khaki-two-48.vercel.app',
 ];
 
 const isLocalNetworkOrigin = (origin) => {

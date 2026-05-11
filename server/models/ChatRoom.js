@@ -38,7 +38,7 @@ const chatRoomSchema = new mongoose.Schema(
     },
     messageExpiry: {
       type: String,
-      enum: ['1h', '12h', '24h'],
+      enum: ['1h', '24h', '3d', '1w', 'permanent'],
       default: '24h',
     },
     createdAt: {

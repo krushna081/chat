@@ -34,8 +34,8 @@ export default function LandingPage() {
             Your conversations stay between you.
           </p>
           <div className="hero-cta">
-<Link to="/how-it-works">
-            <button className="cta-secondary">See how it works</button>
+            <Link to="/signup">
+              <button className="cta-primary">Start free</button>
             </Link>
               <Link to="/how-it-works">
             <button className="cta-secondary">See how it works</button>

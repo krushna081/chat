@@ -251,14 +251,11 @@ export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
-    console.log('Forgot password request for:', email);
-
     if (!email) {
       return res.status(400).json({ success: false, message: 'Email is required' });
     }
 
     const user = await User.findOne({ email });
-    console.log('User found:', user ? 'yes' : 'no');
     
     if (!user) {
       return res.status(200).json({ 
@@ -268,10 +265,7 @@ export const forgotPassword = async (req, res) => {
     }
 
     const resetToken = generateTokens(user._id, 'reset').accessToken;
-    console.log('Generated reset token, sending email...');
-    
     await sendPasswordResetEmail(email, resetToken);
-    console.log('Email sent successfully');
 
     res.status(200).json({ 
       success: true, 
@@ -279,7 +273,6 @@ export const forgotPassword = async (req, res) => {
     });
   } catch (error) {
     console.error('Forgot password error:', error);
-    console.error('Error details:', error.response?.data || error.message);
     res.status(500).json({ success: false, message: 'Failed to send reset email' });
   }
 };

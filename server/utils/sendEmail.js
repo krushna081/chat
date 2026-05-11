@@ -89,13 +89,9 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
       },
     });
 
-    console.log('Resend API response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Password reset email error:');
-    console.error('- Status:', error.response?.status);
-    console.error('- Data:', error.response?.data);
-    console.error('- Message:', error.message);
+    console.error('Password reset email error:', error.response?.data || error.message);
     throw new Error('Failed to send password reset email');
   }
 };

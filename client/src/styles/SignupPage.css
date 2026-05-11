@@ -1,11 +1,2 @@
-.signup-page {
-  min-height: 100vh;
-}
-
-.signup-page .form-wrapper {
-  max-width: 100%;
-}
-
-.signup-page .requirements-list {
-  gap: 0.5rem;
-}
+/* SignupPage uses the same LoginPage.css structure.
+   All shared auth styles are in LoginPage.css */

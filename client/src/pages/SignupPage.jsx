@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import '@/styles/SignupPage.css';
 import { useAuthStore } from '@/context/store';
 import toast from 'react-hot-toast';
 import { User, Mail, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import '@/styles/SignupPage.css';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -14,7 +14,7 @@ export default function SignupPage() {
     confirmPassword: '',
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
 
   const { signup, loading } = useAuthStore();
@@ -67,161 +67,140 @@ export default function SignupPage() {
     }
   };
 
-  const passwordRequirements = [
+  const requirements = [
     { label: 'At least 8 characters', met: formData.password.length >= 8 },
     { label: 'Uppercase letter', met: /[A-Z]/.test(formData.password) },
     { label: 'Lowercase letter', met: /[a-z]/.test(formData.password) },
     { label: 'Number', met: /\d/.test(formData.password) },
-    { label: 'Special character (@$!%*?&)', met: /[@$!%*?&]/.test(formData.password) },
+    { label: 'Special character', met: /[@$!%*?&]/.test(formData.password) },
   ];
 
   return (
-    <div className="signup-page min-h-screen bg-gradient-to-br from-cyber-900 via-gray-900 to-cyber-900 flex items-center justify-center px-4 py-8">
-      <motion.div
-        className="w-full max-w-md"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <div className="glass-dark p-8 rounded-2xl space-y-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold cyber-glow mb-2">Sign Up</h1>
-            <p className="text-gray-400">Create your secure account</p>
+    <div className="auth-page">
+      <div className="auth-bg-pattern" />
+      <div className="auth-container">
+        <motion.div
+          className="auth-card"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="auth-header">
+            <div className="auth-logo">&#128274;</div>
+            <h1 className="auth-title">Create account</h1>
+            <p className="auth-subtitle">Join SecureChat for encrypted messaging</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username Input */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Username</label>
-              <div className="relative">
-                <User size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-cyber-100" />
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="form-group">
+              <label className="form-label">Username</label>
+              <div className="input-wrapper">
+                <User size={18} className="input-icon" />
                 <input
                   type="text"
                   name="username"
                   value={formData.username}
                   onChange={handleChange}
                   placeholder="Choose a username"
-                  className="input-primary pl-10"
+                  className="input-primary"
                   minLength={3}
                   required
+                  autoComplete="username"
                 />
               </div>
             </div>
 
-            {/* Email Input */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Email</label>
-              <div className="relative">
-                <Mail size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-cyber-100" />
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <div className="input-wrapper">
+                <Mail size={18} className="input-icon" />
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="your@email.com"
-                  className="input-primary pl-10"
+                  placeholder="you@example.com"
+                  className="input-primary"
                   required
+                  autoComplete="email"
                 />
               </div>
             </div>
 
-            {/* Password Input */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Password</label>
-              <div className="relative">
-                <Lock size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-cyber-100" />
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <div className="input-wrapper">
+                <Lock size={18} className="input-icon" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="••••••••"
-                  className="input-primary pl-10 pr-10"
+                  placeholder="Create a strong password"
+                  className="input-primary"
                   required
+                  autoComplete="new-password"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="input-suffix" tabIndex={-1}>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-
-              {/* Password Strength Indicator */}
-              <div className="mt-3 space-y-2">
-                <div className="flex gap-1">
+              <div className="strength-bar">
+                <div className="strength-segments">
                   {[...Array(5)].map((_, i) => (
-                    <div
-                      key={i}
-                      className={`h-1 flex-1 rounded ${
-                        i < passwordStrength ? 'bg-cyber-100' : 'bg-gray-600'
-                      }`}
-                    ></div>
+                    <div key={i} className={`strength-segment ${i < passwordStrength ? 'filled' : ''}`} />
                   ))}
                 </div>
-
-                {/* Requirements Checklist */}
-                <div className="space-y-1 text-sm">
-                  {passwordRequirements.map((req, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-gray-300">
-                      <CheckCircle
-                        size={16}
-                        className={req.met ? 'text-cyber-100' : 'text-gray-600'}
-                      />
-                      <span className={req.met ? 'text-cyber-100' : 'text-gray-400'}>
-                        {req.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              </div>
+              <div className="requirements-list">
+                {requirements.map((req, idx) => (
+                  <div key={idx} className={`requirement ${req.met ? 'met' : ''}`}>
+                    <CheckCircle size={13} />
+                    <span>{req.label}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Confirm Password Input */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Confirm Password</label>
-              <div className="relative">
-                <Lock size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-cyber-100" />
+            <div className="form-group">
+              <label className="form-label">Confirm Password</label>
+              <div className="input-wrapper">
+                <Lock size={18} className="input-icon" />
                 <input
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showConfirm ? 'text' : 'password'}
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  placeholder="••••••••"
-                  className="input-primary pl-10 pr-10"
+                  placeholder="Confirm your password"
+                  className="input-primary"
                   required
+                  autoComplete="new-password"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                >
-                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="input-suffix" tabIndex={-1}>
+                  {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
-            {/* Submit Button */}
             <motion.button
               type="submit"
               disabled={loading || passwordStrength < 5}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full btn-primary py-3 font-semibold disabled:opacity-50"
+              className="auth-submit-btn"
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
             >
-              {loading ? 'Creating account...' : 'Sign Up'}
+              {loading ? 'Creating account...' : 'Create account'}
             </motion.button>
           </form>
 
-          {/* Login Link */}
-          <p className="text-center text-gray-400">
-            Already have an account?{' '}
-            <Link to="/login" className="text-cyber-100 hover:text-cyber-200 font-semibold">
-              Login
-            </Link>
-          </p>
-        </div>
-      </motion.div>
+          <div className="auth-footer">
+            <p className="footer-text">
+              Already have an account?{' '}
+              <Link to="/login" className="footer-link">Sign in</Link>
+            </p>
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
-* {
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -10,417 +10,620 @@
 
 html {
   scroll-behavior: smooth;
+  height: 100%;
 }
 
 body {
-  background-color: #1a1a2e;
-  color: #ffffff;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-html.dark body {
-  background-color: #1a1a2e;
+/* =========================================
+   WHATSAPP-INSPIRED THEME SYSTEM
+   ========================================= */
+
+/* LIGHT THEME - Clean white WhatsApp style */
+html.light body,
+html:not(.dark):not(.blue):not(.black):not(.cyber) body {
+  background-color: #f0f2f5;
+  color: #111b21;
 }
 
-html.light body {
-  background-color: #ffffff;
-  color: #1a1a2e;
-}
-
+/* DARK THEME - WhatsApp dark mode */
+html.dark body,
 html.cyber body {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  color: #00ff88;
+  background-color: #0b141a;
+  color: #e9edef;
 }
 
+/* BLUE THEME */
 html.blue body {
-  background: linear-gradient(135deg, #08121f 0%, #1e3a8a 100%);
+  background-color: #0d1b2a;
   color: #e0f2fe;
 }
 
+/* BLACK THEME - Pure black */
 html.black body {
-  background: #000000;
+  background-color: #000000;
   color: #ffffff;
 }
 
+/* WHITE THEME */
 html.white body {
-  background: #f8fafc;
+  background-color: #f8fafc;
   color: #111827;
 }
 
+/* =========================================
+   GLASS / CARD COMPONENTS
+   ========================================= */
+
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.glass-dark {
+  background: rgba(17, 27, 33, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Light theme cards */
 html.light .glass-dark,
 html.white .glass-dark {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(26, 26, 46, 0.15);
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.06);
 }
 
 html.light .glass,
 html.white .glass {
-  background: rgba(255, 255, 255, 0.7);
-  border-color: rgba(26, 26, 46, 0.12);
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.04);
 }
 
-html.light .input-primary,
-html.white .input-primary {
-  color: #111827;
-  border-color: rgba(26, 26, 46, 0.2);
+/* Blue theme cards */
+html.blue .glass-dark {
+  background: rgba(13, 27, 42, 0.97);
+  border-color: rgba(56, 189, 248, 0.1);
 }
 
-html.light .input-primary::placeholder,
-html.white .input-primary::placeholder {
-  color: #6b7280;
+html.blue .glass {
+  background: rgba(13, 27, 42, 0.85);
+  border-color: rgba(56, 189, 248, 0.08);
+}
+
+/* Black theme cards */
+html.black .glass-dark {
+  background: rgba(0, 0, 0, 0.97);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+html.black .glass {
+  background: rgba(0, 0, 0, 0.85);
+  border-color: rgba(255, 255, 255, 0.04);
+}
+
+/* =========================================
+   BUTTONS - Clean WhatsApp style
+   ========================================= */
+
+.btn-primary {
+  background-color: #00a884;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background-color: #008069;
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Secondary button - outlined */
+.btn-secondary {
+  background-color: transparent;
+  color: #00a884;
+  border: 1px solid rgba(0, 168, 132, 0.4);
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background-color: rgba(0, 168, 132, 0.08);
+  border-color: #00a884;
+}
+
+.btn-secondary:active {
+  background-color: rgba(0, 168, 132, 0.15);
+  transform: scale(0.98);
+}
+
+/* Light theme buttons */
+html.light .btn-primary,
+html.white .btn-primary {
+  color: #ffffff;
 }
 
 html.light .btn-secondary,
 html.white .btn-secondary {
-  background: rgba(26, 26, 46, 0.08);
-  border-color: rgba(26, 26, 46, 0.2);
-  color: #111827;
+  color: #128c7e;
+  border-color: rgba(18, 140, 126, 0.3);
 }
 
-html.light .btn-primary,
-html.white .btn-primary {
-  color: #111827;
+html.light .btn-secondary:hover,
+html.white .btn-secondary:hover {
+  background-color: rgba(18, 140, 126, 0.06);
+  border-color: #128c7e;
+}
+
+/* Blue theme buttons */
+html.blue .btn-primary {
+  background-color: #38bdf8;
+  color: #0c1a2e;
+}
+
+html.blue .btn-primary:hover {
+  background-color: #0ea5e9;
 }
 
 html.blue .btn-secondary {
-  background: rgba(14, 165, 233, 0.12);
+  color: #38bdf8;
   border-color: rgba(56, 189, 248, 0.4);
 }
 
-html.black .btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.15);
+html.blue .btn-secondary:hover {
+  background-color: rgba(56, 189, 248, 0.08);
+  border-color: #38bdf8;
 }
 
-html.black .glass-dark {
-  background: rgba(0, 0, 0, 0.7);
-}
+/* =========================================
+   INPUT FIELDS - Clean modern style
+   ========================================= */
 
-html.white .glass-dark {
-  color: #111827;
-}
-
-html.blue .glass-dark {
-  background: rgba(15, 42, 76, 0.78);
-}
-
-html.blue .glass {
-  background: rgba(15, 42, 76, 0.55);
-}
-
-html.black .glass {
-  background: rgba(0, 0, 0, 0.55);
-}
-
-html.white .glass {
-  background: rgba(255, 255, 255, 0.75);
-}
-
-html.light .glass-dark {
-  background: rgba(255, 255, 255, 0.75);
-  border-color: rgba(26, 26, 46, 0.15);
-}
-
-html.light .glass {
-  background: rgba(255, 255, 255, 0.7);
-  border-color: rgba(26, 26, 46, 0.12);
-}
-
-html.light .input-primary {
-  color: #1a1a2e;
-  border-color: rgba(26, 26, 46, 0.2);
-}
-
-html.light .input-primary::placeholder {
-  color: #6b7280;
-}
-
-html.light .btn-secondary {
-  background: rgba(26, 26, 46, 0.08);
-  border-color: rgba(26, 26, 46, 0.2);
-  color: #1a1a2e;
-}
-
-html.light .btn-primary {
-  color: #1a1a2e;
-}
-
-html.light .cyber-glow {
-  text-shadow: none;
-}
-
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #2a2a3e;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #00ff88;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #00d4ff;
-}
-
-/* Glassmorphism Effect */
-.glass {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.glass-dark {
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Cyber Glow */
-.cyber-glow {
-  text-shadow: 0 0 10px rgba(0, 255, 136, 0.8),
-    0 0 20px rgba(0, 212, 255, 0.6),
-    0 0 30px rgba(243, 0, 110, 0.4);
-}
-
-.glow-border {
-  border: 2px solid #00ff88;
-  box-shadow: 0 0 10px rgba(0, 255, 136, 0.5),
-    0 0 20px rgba(0, 212, 255, 0.3);
-}
-
-/* Animation Utilities */
-@keyframes slide-in-top {
-  from {
-    transform: translateY(-10px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slide-in-bottom {
-  from {
-    transform: translateY(10px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.animate-slide-in-top {
-  animation: slide-in-top 0.3s ease-out;
-}
-
-.animate-slide-in-bottom {
-  animation: slide-in-bottom 0.3s ease-out;
-}
-
-/* Button Styles */
-.btn-primary {
-  @apply px-4 py-2 rounded-lg font-semibold transition-all duration-300;
-  background: linear-gradient(135deg, #00ff88, #00d4ff);
-  color: #1a1a2e;
-  box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
-}
-
-.btn-primary:hover {
-  box-shadow: 0 0 25px rgba(0, 255, 136, 0.8);
-  transform: translateY(-2px);
-}
-
-.btn-secondary {
-  @apply px-4 py-2 rounded-lg font-semibold transition-all duration-300;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid #00ff88;
-  color: #00ff88;
-}
-
-.btn-secondary:hover {
-  background: rgba(0, 255, 136, 0.1);
-  box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
-}
-
-/* Input Styles */
 .input-primary {
-  @apply w-full px-4 py-2 rounded-lg bg-transparent border border-cyan-500 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-50 transition-all resize-none;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e9edef;
+  font-size: 15px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  resize: none;
   -webkit-appearance: none;
   -webkit-tap-highlight-color: transparent;
-  font-size: 16px; /* Prevents zoom on iOS */
+}
+
+.input-primary::placeholder {
+  color: #8696a0;
 }
 
 .input-primary:focus {
-  scroll-margin-bottom: 200px;
+  outline: none;
+  border-color: #00a884;
+  box-shadow: 0 0 0 2px rgba(0, 168, 132, 0.15);
 }
 
-/* Mobile text input fixes */
-@media (max-width: 640px) {
-  .input-primary {
-    font-size: 16px; /* Prevents auto-zoom on iOS */
-    padding: 0.75rem 0.875rem;
-  }
+/* Light/white theme inputs */
+html.light .input-primary,
+html.white .input-primary {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #111b21;
 }
 
-/* Message Styles - FIXED */
-.message-sent {
-  @apply bg-gradient-to-r from-cyber-100 to-cyan-400 text-cyber-900 rounded-lg rounded-tr-none px-4 py-2;
-  animation: messageSlideIn 0.2s ease-out;
-  box-shadow: 0 2px 8px rgba(0, 255, 136, 0.2);
-  max-width: 90%;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  word-break: break-word;
+html.light .input-primary::placeholder,
+html.white .input-primary::placeholder {
+  color: #667781;
 }
 
-.message-received {
-  @apply bg-gray-700/60 text-white rounded-lg rounded-tl-none px-4 py-2;
-  animation: messageSlideIn 0.2s ease-out;
-  box-shadow: 0 2px 8px rgba(100, 100, 150, 0.2);
-  max-width: 90%;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(100, 100, 150, 0.3);
+html.light .input-primary:focus,
+html.white .input-primary:focus {
+  border-color: #128c7e;
+  box-shadow: 0 0 0 2px rgba(18, 140, 126, 0.12);
 }
 
-/* Mobile / Safe area fixes - UPDATED */
-.fixed-bottom-safe {
+/* Blue theme inputs */
+html.blue .input-primary {
+  background: rgba(56, 189, 248, 0.05);
+  border-color: rgba(56, 189, 248, 0.2);
+  color: #e0f2fe;
+}
+
+html.blue .input-primary::placeholder {
+  color: #7dd3fc;
+}
+
+html.blue .input-primary:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+}
+
+/* Black theme inputs */
+html.black .input-primary {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html.black .input-primary:focus {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+/* =========================================
+   SCROLLBAR - Minimal clean style
+   ========================================= */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+html.light ::-webkit-scrollbar-thumb,
+html.white ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+html.light ::-webkit-scrollbar-thumb:hover,
+html.white ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+html.blue ::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.2);
+}
+
+html.blue ::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.35);
+}
+
+/* =========================================
+   MESSAGE BUBBLES - WhatsApp style
+   ========================================= */
+
+.message-bubble {
+  display: inline-block;
+  max-width: 65%;
+  padding: 6px 8px 6px 9px;
+  border-radius: 7.5px;
   position: relative;
-  bottom: 0;
-  z-index: 40;
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
-  width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.5;
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+  animation: msgSlideIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Increase tappable areas and scale down for very small screens */
+.message-bubble p {
+  display: block;
+}
+
+.message-bubble .msg-sender {
+  font-size: 12.83px;
+  font-weight: 600;
+  color: #53bdeb;
+  margin-bottom: 1px;
+}
+
+.message-bubble .msg-text {
+  font-size: 14.2px;
+  white-space: pre-wrap;
+}
+
+.message-bubble .msg-time {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  text-align: right;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+/* Light theme message times */
+html.light .message-bubble .msg-time,
+html.white .message-bubble .msg-time {
+  color: rgba(17, 27, 33, 0.45);
+}
+
+html.blue .message-bubble .msg-time {
+  color: rgba(224, 242, 254, 0.5);
+}
+
+/* SENT MESSAGE - Right aligned, teal background */
+.message-sent {
+  background: #005c4b;
+  color: #e9edef;
+  border-top-right-radius: 0;
+}
+
+html.light .message-sent,
+html.white .message-sent {
+  background: #d9fdd8;
+  color: #111b21;
+  border-top-right-radius: 0;
+}
+
+html.light .message-sent .msg-sender,
+html.white .message-sent .msg-sender {
+  color: #128c7e;
+}
+
+html.light .message-sent .msg-time,
+html.white .message-sent .msg-time {
+  color: rgba(17, 27, 33, 0.45);
+}
+
+html.blue .message-sent {
+  background: #0c4a6e;
+  color: #e0f2fe;
+}
+
+html.blue .message-sent .msg-sender {
+  color: #7dd3fc;
+}
+
+html.blue .message-sent .msg-time {
+  color: rgba(224, 242, 254, 0.45);
+}
+
+html.black .message-sent {
+  background: #1a2e25;
+}
+
+/* RECEIVED MESSAGE - Left aligned, dark gray background */
+.message-received {
+  background: #1f2c33;
+  color: #e9edef;
+  border-top-left-radius: 0;
+}
+
+html.light .message-received,
+html.white .message-received {
+  background: #ffffff;
+  color: #111b21;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+html.blue .message-received {
+  background: #0f2744;
+  color: #e0f2fe;
+  border: 1px solid rgba(56, 189, 248, 0.1);
+}
+
+html.black .message-received {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* =========================================
+   ANIMATIONS
+   ========================================= */
+
+@keyframes msgSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes typingBounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+/* =========================================
+   TYPOGRAPHY
+   ========================================= */
+
+.text-responsive {
+  font-size: 14.2px;
+}
+
+html.light .text-responsive,
+html.white .text-responsive {
+  color: #41525d;
+}
+
+/* =========================================
+   SAFE AREAS & MOBILE
+   ========================================= */
+
+.safe-area-bottom {
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+.safe-area-top {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+
+/* iOS keyboard handling */
+@supports (-webkit-touch-callout: none) {
+  .chat-input-container {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}
+
+/* =========================================
+   RESPONSIVE BREAKPOINTS
+   ========================================= */
+
+/* Mobile */
 @media (max-width: 640px) {
-  .btn-primary, .btn-secondary {
-    @apply py-2.5 text-sm min-h-[44px];
-  }
-
-  .input-primary {
-    @apply px-3 py-2.5 text-base min-h-[44px];
-  }
-
-  .glass-dark {
-    padding: 0.75rem 1rem;
-  }
-
-  .max-w-md {
-    max-width: 90% !important;
-  }
-
-  /* Better message bubble sizing on mobile */
   .message-bubble {
-    max-width: 95%;
-    padding: 0.65rem 0.85rem;
-    font-size: 0.875rem;
+    max-width: 85%;
+    padding: 5px 7px 6px 9px;
   }
 
-  /* Header adjustments for mobile */
-  .chatroom-page > div:first-child {
-    padding: 0.75rem 1rem;
+  .message-bubble .msg-text {
+    font-size: 14px;
   }
 
-  h2 {
-    font-size: 1.125rem;
+  .message-bubble .msg-time {
+    font-size: 10.5px;
   }
 
-  /* Better spacing in chat messages */
-  .chatroom-page > div:nth-child(2) {
-    padding: 1rem 0.75rem;
-    gap: 0.75rem;
-  }
-
-  /* Input area adjustments */
-  .chatroom-page > div:last-child {
-    padding: 0.75rem 1rem;
-    gap: 0.5rem;
-  }
-
-  /* Reduce excessive gaps on mobile */
-  .space-y-3 {
-    --space-y: 0.75rem;
+  .message-bubble .msg-sender {
+    font-size: 12px;
   }
 }
 
-/* Very small screens (< 360px) */
+/* Tablets */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .message-bubble {
+    max-width: 70%;
+  }
+}
+
+/* Very small screens */
 @media (max-width: 360px) {
   .message-bubble {
-    max-width: 100%;
-    padding: 0.6rem 0.75rem;
+    max-width: 92%;
+    padding: 4px 6px 5px 8px;
   }
 
-  .message-bubble p {
-    font-size: 0.8rem;
-    line-height: 1.3;
-  }
-
-  .btn-primary, .btn-secondary {
-    font-size: 0.75rem;
-    padding: 0.5rem;
-  }
-
-  h2 {
-    font-size: 1rem;
-  }
-
-  .text-xs {
-    font-size: 0.65rem;
+  .message-bubble .msg-text {
+    font-size: 13px;
   }
 }
 
-/* Tablet and larger screens */
-@media (min-width: 768px) {
+/* Landscape mode on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
   .message-bubble {
     max-width: 60%;
+    padding: 4px 6px 5px 8px;
+  }
+
+  .message-bubble .msg-text {
+    font-size: 13px;
   }
 }
 
-/* Landscape mode adjustments */
-@media (max-height: 500px) and (orientation: landscape) {
-  .chatroom-page > div:nth-child(2) {
-    padding: 0.5rem 0.75rem;
-    gap: 0.5rem;
-  }
+/* =========================================
+   UTILITY CLASSES
+   ========================================= */
 
-  .message-bubble {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.8rem;
-  }
-
-  .chatroom-page > div:first-child {
-    padding: 0.5rem;
-  }
-
-  .chatroom-page > div:last-child {
-    padding: 0.5rem;
-  }
+/* Prevent double-tap zoom */
+button, input, textarea {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-/* Improve visible focus on mobile keyboards */
-input:focus, textarea:focus {
-  scroll-margin-bottom: 200px;
-}
-
-/* Prevent double-tap zoom on buttons */
-button, input {
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-/* Better text selection in messages */
+/* Better text selection */
 .message-bubble {
   -webkit-user-select: text;
   user-select: text;
+}
+
+/* Smooth transitions for interactive elements */
+.glass-dark, .glass {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Focus states */
+input:focus, button:focus {
+  outline: none;
+}
+
+/* iOS input zoom prevention */
+@media (max-width: 640px) {
+  .input-primary {
+    font-size: 16px;
+  }
+}
+
+/* WhatsApp-style hover states */
+.room-card:hover {
+  background-color: rgba(0, 168, 132, 0.06);
+}
+
+html.light .room-card:hover,
+html.white .room-card:hover {
+  background-color: rgba(18, 140, 126, 0.04);
+}
+
+/* Cyan/cyber accent for dark cyber theme */
+html.cyber .message-sent {
+  background: linear-gradient(135deg, #005c4b, #00695c);
+}
+
+html.cyber .message-received {
+  background: #1f2c33;
+}
+
+html.cyber .btn-primary {
+  background-color: #00a884;
+}
+
+html.cyber .btn-primary:hover {
+  background-color: #008069;
+}
+
+html.cyber .input-primary:focus {
+  border-color: #00a884;
+  box-shadow: 0 0 0 2px rgba(0, 168, 132, 0.15);
+}
+
+html.cyber .cyber-glow {
+  text-shadow: none;
+  color: #00a884;
 }

@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuthStore, useChatStore } from '@/context/store';
 import { chatAPI } from '@/services/api';
 import '@/styles/ChatRoomPage.css';
 import { io } from 'socket.io-client';
-import { Send, ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { encryptMessage, decryptMessage, getStoredKey, storeEncryptionKey, importKey, retrieveEncryptionKey } from '@/utils/encryption';
+import { encryptMessage, decryptMessage, getStoredKey, storeEncryptionKey, importKey } from '@/utils/encryption';
 
 export default function ChatRoomPage() {
   const { roomId } = useParams();
@@ -18,10 +18,18 @@ export default function ChatRoomPage() {
   const [messageInput, setMessageInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [socket, setSocket] = useState(null);
-  const [room, setRoom] = useState(null);
   const [encryptionKey, setEncryptionKey] = useState(null);
+  const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
 
-  // Initialize Socket.io
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
   useEffect(() => {
     const initSocket = async () => {
       try {
@@ -29,15 +37,12 @@ export default function ChatRoomPage() {
         const apiUrl = import.meta.env.VITE_API_URL || 'https://api-chat-1xj6.onrender.com/api';
         const socketUrl = apiUrl.replace(/\/api$/, '');
 
-        // Clear previous room messages when switching rooms
         setMessages([]);
 
-        // Ensure we join via the API to receive the roomKey for shared encryption
         try {
           const joinResp = await chatAPI.joinRoom({ roomId });
           const roomInfo = joinResp.data.chatRoom;
           if (roomInfo?.roomKey) {
-            // store room key locally for this room and import it
             storeEncryptionKey(roomInfo.roomKey, roomId);
             const imported = await importKey(roomInfo.roomKey);
             setEncryptionKey(imported);
@@ -46,24 +51,19 @@ export default function ChatRoomPage() {
           console.warn('Could not join room via API:', e?.response?.data || e.message || e);
         }
 
-        const newSocket = io(socketUrl, {
-          auth: { token },
-        });
+        const newSocket = io(socketUrl, { auth: { token } });
 
         newSocket.on('connect', () => {
-          console.log('Socket connected');
           newSocket.emit('join_room', roomId);
         });
 
         newSocket.on('receive_message', async (data) => {
           try {
-            // If server sent a plaintext message (encryption disabled), use it directly
             if (data.message) {
               addMessage({ ...data, message: data.message });
               return;
             }
 
-            // If encryption is disabled on client, and server didn't send plaintext, show raw encrypted
             const useEncryption = import.meta.env.VITE_USE_ENCRYPTION !== 'false';
             if (!useEncryption) {
               addMessage({ ...data, message: data.encryptedMessage });
@@ -73,9 +73,7 @@ export default function ChatRoomPage() {
             const key = await getStoredKey(roomId);
             const decrypted = await decryptMessage(data.encryptedMessage, data.iv, key);
             addMessage({ ...data, message: decrypted });
-            return;
           } catch (error) {
-            console.error('Receive decryption error:', error?.message || error);
             addMessage({ ...data, message: data.encryptedMessage || data.message || 'Unable to decrypt' });
           }
         });
@@ -92,7 +90,6 @@ export default function ChatRoomPage() {
 
         setSocket(newSocket);
       } catch (error) {
-        console.error('Socket error:', error);
         toast.error('Connection error');
       }
     };
@@ -102,30 +99,25 @@ export default function ChatRoomPage() {
     return () => {
       socket?.disconnect();
     };
-  }, [roomId, user, addMessage, addTypingUser, removeTypingUser]);
+  }, [roomId, user, addMessage, addTypingUser, removeTypingUser, setMessages]);
 
-  // Get encryption key
   useEffect(() => {
     const loadKey = async () => {
       try {
         const key = await getStoredKey(roomId);
         setEncryptionKey(key);
       } catch (error) {
-        console.error('Encryption key error:', error);
         toast.error('Encryption initialization failed');
       }
     };
-
     loadKey();
   }, [roomId]);
 
-  // Fetch messages
   useEffect(() => {
     const fetchMessages = async () => {
       try {
         setLoading(true);
         const response = await chatAPI.getMessages(roomId, 1);
-        // Decrypt fetched messages so UI shows plaintext to users
         const messagesFromServer = response.data.messages || [];
         try {
           const key = await getStoredKey(roomId);
@@ -144,7 +136,6 @@ export default function ChatRoomPage() {
           setMessages(messagesFromServer);
         }
       } catch (error) {
-        console.error('Fetch messages error:', error);
         toast.error('Failed to load messages');
       } finally {
         setLoading(false);
@@ -161,12 +152,7 @@ export default function ChatRoomPage() {
 
     try {
       if (!useEncryption) {
-        // send plaintext
-        socket.emit('send_message', {
-          roomId,
-          message: messageInput,
-        });
-        // show locally
+        socket.emit('send_message', { roomId, message: messageInput });
         addMessage({
           _id: `local-${Date.now()}`,
           roomId,
@@ -181,17 +167,15 @@ export default function ChatRoomPage() {
           return;
         }
         const { iv, encryptedData } = await encryptMessage(messageInput, encryptionKey);
-        socket.emit('send_message', {
-          roomId,
-          encryptedMessage: encryptedData,
-          iv,
-        });
+        socket.emit('send_message', { roomId, encryptedMessage: encryptedData, iv });
       }
 
       setMessageInput('');
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
       socket.emit('stop_typing', roomId);
     } catch (error) {
-      console.error('Send message error:', error);
       toast.error('Failed to send message');
     }
   };
@@ -202,110 +186,124 @@ export default function ChatRoomPage() {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const autoResize = (e) => {
+    setMessageInput(e.target.value);
+    const textarea = e.target;
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
+  };
+
+  const formatTime = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const renderMessages = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-sm opacity-50">Loading messages...</div>
+        </div>
+      );
+    }
+
+    if (messages.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center opacity-50">
+            <div className="text-4xl mb-3">&#128172;</div>
+            <p className="text-sm">No messages yet. Say hi!</p>
+          </div>
+        </div>
+      );
+    }
+
+    return messages.map((msg, idx) => {
+      const isSent = msg.senderId === user?._id;
+      const senderName = isSent ? null : (msg.senderName || 'Unknown');
+
+      return (
+        <motion.div
+          key={msg._id || idx}
+          className={`flex w-full px-2 sm:px-4 ${isSent ? 'justify-end' : 'justify-start'}`}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18 }}
+        >
+          <div className={`message-bubble ${isSent ? 'message-sent' : 'message-received'}`}>
+            {senderName && <p className="msg-sender">{senderName}</p>}
+            <p className="msg-text">{msg.message || msg.encryptedMessage?.slice(0, 30) + '...'}</p>
+            <p className="msg-time">
+              {formatTime(msg.createdAt)}
+              {isSent && <span style={{ marginLeft: 3, fontSize: 10 }}>&#10003;&#10003;</span>}
+            </p>
+          </div>
+        </motion.div>
+      );
+    });
+  };
+
   return (
-    <div className="chatroom-page w-full h-screen flex flex-col bg-gradient-to-br from-cyber-900 via-gray-900 to-cyber-900 overflow-hidden">
-      {/* Header */}
-      <div className="shrink-0 glass-dark border-b border-cyan-500/20 px-4 py-3 flex items-center justify-between hover-lift z-20">
-        <div className="flex items-center gap-3 min-w-0">
+    <div className="chatroom-page">
+      <div className="chatroom-page-header px-4 py-3">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/dashboard')}
-            className="shrink-0 p-2 hover:bg-cyan-500/20 rounded-lg transition hover-lift"
+            className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors"
           >
-            <ArrowLeft size={20} className="h-4 w-4" />
+            <ArrowLeft size={20} />
           </button>
-          <div className="min-w-0 truncate">
-            <h2 className="text-lg font-bold text-responsive truncate">Chat Room</h2>
-            <p className="text-xs text-gray-400 truncate">{roomId}</p>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-semibold truncate">{roomId ? roomId.slice(0, 12) + '...' : 'Chat'}</h2>
+            <p className="text-xs opacity-50">End-to-end encrypted</p>
           </div>
-        </div>
-        <div className="shrink-0 flex items-center gap-2 text-cyber-100 ml-4">
-          <AlertCircle size={16} className="h-3 w-3" />
-          <span className="text-xs hidden sm:inline">E2EE Enabled</span>
         </div>
       </div>
 
-      {/* Messages Area - Main scrollable container */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-3 w-full flex flex-col">
-        {loading ? (
-          <div className="flex items-center justify-center flex-1">
-            <p className="text-gray-400 text-responsive">Loading messages...</p>
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="flex items-center justify-center flex-1">
-            <p className="text-gray-400 text-responsive">No messages yet. Start the conversation!</p>
-          </div>
-        ) : (
-          messages.map((msg, idx) => (
-            <motion.div
-              key={msg._id || idx}
-              className={`flex w-full ${msg.senderId === user?._id ? 'justify-end' : 'justify-start'}`}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div
-                className={`message-bubble ${
-                  msg.senderId === user?._id
-                    ? 'message-sent'
-                    : 'message-received'
-                }`}
-              >
-                <p className="text-xs mb-1 font-semibold opacity-90">
-                  {msg.senderId === user?._id ? 'You' : msg.senderId?.username || 'Unknown'}
-                </p>
-                <p className="text-sm break-words whitespace-pre-wrap leading-relaxed mb-1">{msg.message || msg.encryptedMessage?.slice(0, 30) + '...'}</p>
-                <p className="text-xs opacity-70">
-                  {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                </p>
-              </div>
-            </motion.div>
-          ))
-        )}
-
-        {/* Typing Indicator */}
+      <div className="chatroom-messages-area">
+        {renderMessages()}
         {typingUsers.length > 0 && (
-          <motion.div
-            className="flex justify-start w-full"
-            animate={{ opacity: [0.5, 1] }}
-            transition={{ duration: 0.6, repeat: Infinity }}
-          >
-            <div className="text-xs text-gray-400 pl-2">
-              {typingUsers.length} user{typingUsers.length > 1 ? 's' : ''} typing...
+          <div className="flex items-center gap-2 px-4 py-2">
+            <div className="typing-dots">
+              <span /><span /><span />
             </div>
-          </motion.div>
+            <span className="text-xs opacity-50">
+              {typingUsers.length === 1 ? 'Someone is typing...' : 'Several people typing...'}
+            </span>
+          </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - Fixed at bottom */}
-      <div className="shrink-0 glass-dark border-t border-cyan-500/20 px-4 py-3 w-full z-30 safe-area-bottom">
-        <div className="flex gap-2 items-end">
-          <input
-            type="text"
-            value={messageInput}
-            onChange={(e) => {
-              setMessageInput(e.target.value);
-              handleTyping();
-            }}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            placeholder="Type a message..."
-            className="input-primary flex-1 max-h-[100px] text-sm"
-          />
-          <motion.button
+      <div className="chatroom-input-area">
+        <div className="flex items-end gap-2 max-w-3xl mx-auto">
+          <div className="chat-input-wrapper flex-1">
+            <textarea
+              ref={textareaRef}
+              value={messageInput}
+              onChange={autoResize}
+              onKeyDown={handleKeyDown}
+              onInput={handleTyping}
+              placeholder="Type a message"
+              rows={1}
+            />
+          </div>
+          <button
             onClick={handleSendMessage}
             disabled={!messageInput.trim()}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="shrink-0 btn-primary font-semibold flex items-center justify-center gap-1 disabled:opacity-50 p-3 aspect-square"
+            className="send-btn btn-primary"
+            aria-label="Send message"
           >
-            <Send size={18} className="h-5 w-5" />
-          </motion.button>
+            <Send size={20} />
+          </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2 text-center opacity-70">💚 End-to-end encrypted</p>
       </div>
     </div>
   );

@@ -25,94 +25,81 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="login-page min-h-screen bg-gradient-to-br from-cyber-900 via-gray-900 to-cyber-900 flex items-center justify-center px-4 py-8">
-      <motion.div
-        className="w-full max-w-md mx-auto px-4"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <div className="glass-dark p-8 rounded-2xl space-y-8">
-          <div className="text-center">
-            <h1 className="text-3xl sm:text-4xl font-bold cyber-glow mb-2">Login</h1>
-            <p className="text-gray-400">Access your secure chat account</p>
+    <div className="auth-page">
+      <div className="auth-bg-pattern" />
+      <div className="auth-container">
+        <motion.div
+          className="auth-card"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="auth-header">
+            <div className="auth-logo">&#128274;</div>
+            <h1 className="auth-title">Welcome back</h1>
+            <p className="auth-subtitle">Sign in to your secure chat</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Input */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Email</label>
-              <div className="relative">
-                <Mail size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-cyber-100" />
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <div className="input-wrapper">
+                <Mail size={18} className="input-icon" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  className="input-primary pl-10"
+                  placeholder="you@example.com"
+                  className="input-primary"
                   required
+                  autoComplete="email"
                 />
               </div>
             </div>
 
-            {/* Password Input */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Password</label>
-              <div className="relative">
-                <Lock size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-cyber-100" />
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <div className="input-wrapper">
+                <Lock size={18} className="input-icon" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="input-primary pl-10 pr-10"
+                  placeholder="Enter your password"
+                  className="input-primary"
                   required
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                  className="input-suffix"
+                  tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
-            {/* Submit Button */}
             <motion.button
               type="submit"
               disabled={loading}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full btn-primary py-3 font-semibold"
+              className="auth-submit-btn"
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? 'Signing in...' : 'Sign in'}
             </motion.button>
           </form>
 
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-600"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-cyber-900 text-gray-400">or</span>
-            </div>
+          <div className="auth-footer">
+            <p className="footer-text">
+              Don't have an account?{' '}
+              <Link to="/signup" className="footer-link">Create one</Link>
+            </p>
           </div>
-
-          {/* Google OAuth (placeholder) */}
-          <button className="w-full btn-secondary py-3 font-semibold flex items-center justify-center gap-2">
-            🔵 Continue with Google
-          </button>
-
-          {/* Sign Up Link */}
-          <p className="text-center text-gray-400">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-cyber-100 hover:text-cyber-200 font-semibold">
-              Sign up
-            </Link>
-          </p>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }

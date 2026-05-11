@@ -1,11 +1,621 @@
-.dashboard-page {
-  min-height: 100vh;
+/* =========================================
+   DASHBOARD LAYOUT - WhatsApp style
+   ========================================= */
+
+.dashboard-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  background: #0b141a;
+  overflow: hidden;
 }
 
-.dashboard-page .chat-room-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+html.light .dashboard-layout,
+html.white .dashboard-layout {
+  background: #f0f2f5;
 }
 
-.dashboard-page .chat-room-card:hover {
-  transform: translateY(-2px);
+html.blue .dashboard-layout {
+  background: #0d1b2a;
+}
+
+html.black .dashboard-layout {
+  background: #000000;
+}
+
+/* =========================================
+   NAVIGATION BAR
+   ========================================= */
+
+.dashboard-nav {
+  flex-shrink: 0;
+  height: 59px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: #1f2c33;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+html.light .dashboard-nav,
+html.white .dashboard-nav {
+  background: #ffffff;
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+html.blue .dashboard-nav {
+  background: #0f2744;
+  border-bottom-color: rgba(56, 189, 248, 0.08);
+}
+
+html.black .dashboard-nav {
+  background: #0a0a0a;
+  border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-icon {
+  font-size: 22px;
+}
+
+.brand-text {
+  font-size: 17px;
+  font-weight: 600;
+  color: #e9edef;
+}
+
+html.light .brand-text,
+html.white .brand-text {
+  color: #111b21;
+}
+
+html.blue .brand-text {
+  color: #e0f2fe;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  color: #8696a0;
+}
+
+.nav-btn:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+html.light .nav-btn,
+html.white .nav-btn {
+  color: #54656f;
+}
+
+html.light .nav-btn:hover,
+html.white .nav-btn:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+html.blue .nav-btn {
+  color: #7dd3fc;
+}
+
+html.blue .nav-btn:hover {
+  background-color: rgba(56, 189, 248, 0.08);
+}
+
+html.black .nav-btn {
+  color: #a1a1aa;
+}
+
+html.black .nav-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.logout-btn:hover {
+  background-color: rgba(255, 59, 48, 0.12);
+}
+
+html.light .logout-btn:hover,
+html.white .logout-btn:hover {
+  background-color: rgba(255, 59, 48, 0.08);
+}
+
+html.blue .logout-btn:hover {
+  background-color: rgba(239, 68, 68, 0.12);
+}
+
+html.black .logout-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* =========================================
+   DASHBOARD CONTENT
+   ========================================= */
+
+.dashboard-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+}
+
+/* =========================================
+   CHAT LIST CONTAINER
+   ========================================= */
+
+.chat-list-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+}
+
+.chat-list-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #8696a0;
+}
+
+.new-chat-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  color: #8696a0;
+}
+
+.new-chat-btn:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+html.light .new-chat-btn,
+html.white .new-chat-btn {
+  color: #54656f;
+}
+
+html.light .new-chat-btn:hover,
+html.white .new-chat-btn:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+html.blue .new-chat-btn {
+  color: #7dd3fc;
+}
+
+html.blue .new-chat-btn:hover {
+  background-color: rgba(56, 189, 248, 0.08);
+}
+
+html.black .new-chat-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* =========================================
+   CREATE ROOM PANEL
+   ========================================= */
+
+.create-room-panel {
+  margin: 0 16px 8px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+html.light .create-room-panel,
+html.white .create-room-panel {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+html.blue .create-room-panel {
+  background: rgba(56, 189, 248, 0.03);
+  border-color: rgba(56, 189, 248, 0.1);
+}
+
+html.black .create-room-panel {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.04);
+}
+
+.create-room-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e9edef;
+}
+
+html.light .create-room-title,
+html.white .create-room-title {
+  color: #111b21;
+}
+
+html.blue .create-room-title {
+  color: #e0f2fe;
+}
+
+html.black .create-room-title {
+  color: #ffffff;
+}
+
+.create-room-input,
+.create-room-select {
+  font-size: 14px;
+}
+
+.create-room-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* =========================================
+   CHAT LIST
+   ========================================= */
+
+.chat-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 16px;
+}
+
+/* =========================================
+   ROOM CARD - WhatsApp chat list style
+   ========================================= */
+
+.room-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.room-card:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+html.light .room-card,
+html.white .room-card {
+  border-bottom-color: rgba(0, 0, 0, 0.04);
+}
+
+html.light .room-card:hover,
+html.white .room-card:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+html.blue .room-card {
+  border-bottom-color: rgba(56, 189, 248, 0.05);
+}
+
+html.blue .room-card:hover {
+  background-color: rgba(56, 189, 248, 0.04);
+}
+
+html.black .room-card {
+  border-bottom-color: rgba(255, 255, 255, 0.03);
+}
+
+html.black .room-card:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Avatar */
+.room-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00a884, #008069);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+html.light .room-avatar,
+html.white .room-avatar {
+  background: linear-gradient(135deg, #128c7e, #075e54);
+  color: #ffffff;
+}
+
+html.blue .room-avatar {
+  background: linear-gradient(135deg, #38bdf8, #0284c7);
+}
+
+html.black .room-avatar {
+  background: linear-gradient(135deg, #1a2e25, #0a1a14);
+}
+
+/* Room info */
+.room-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.room-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.room-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: #e9edef;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html.light .room-name,
+html.white .room-name {
+  color: #111b21;
+}
+
+html.blue .room-name {
+  color: #e0f2fe;
+}
+
+html.black .room-name {
+  color: #ffffff;
+}
+
+.room-meta {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: #8696a0;
+  flex-shrink: 0;
+}
+
+html.light .room-meta,
+html.white .room-meta {
+  color: #667781;
+}
+
+html.blue .room-meta {
+  color: #7dd3fc;
+}
+
+html.black .room-meta {
+  color: #71717a;
+}
+
+.room-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.room-id {
+  font-size: 13px;
+  color: #8696a0;
+}
+
+html.light .room-id,
+html.white .room-id {
+  color: #667781;
+}
+
+html.blue .room-id {
+  color: #7dd3fc;
+}
+
+html.black .room-id {
+  color: #71717a;
+}
+
+.room-participants {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: #8696a0;
+}
+
+html.light .room-participants,
+html.white .room-participants {
+  color: #667781;
+}
+
+html.blue .room-participants {
+  color: #7dd3fc;
+}
+
+html.black .room-participants {
+  color: #71717a;
+}
+
+.room-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: #f8c048;
+  background: rgba(248, 192, 72, 0.12);
+  padding: 2px 6px;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+html.light .room-badge,
+html.white .room-badge {
+  color: #856404;
+  background: rgba(255, 193, 7, 0.12);
+}
+
+html.blue .room-badge {
+  color: #fcd34d;
+  background: rgba(252, 211, 77, 0.12);
+}
+
+html.black .room-badge {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.room-arrow {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+html.light .room-arrow,
+html.white .room-arrow {
+  color: rgba(0, 0, 0, 0.15);
+}
+
+html.blue .room-arrow {
+  color: rgba(56, 189, 248, 0.2);
+}
+
+html.black .room-arrow {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+/* =========================================
+   EMPTY STATE
+   ========================================= */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+
+.empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e9edef;
+  margin-bottom: 8px;
+}
+
+html.light .empty-title,
+html.white .empty-title {
+  color: #111b21;
+}
+
+html.blue .empty-title {
+  color: #e0f2fe;
+}
+
+html.black .empty-title {
+  color: #ffffff;
+}
+
+.empty-desc {
+  font-size: 14px;
+  color: #8696a0;
+}
+
+html.light .empty-desc,
+html.white .empty-desc {
+  color: #667781;
+}
+
+html.blue .empty-desc {
+  color: #7dd3fc;
+}
+
+html.black .empty-desc {
+  color: #71717a;
+}
+
+/* =========================================
+   RESPONSIVE
+   ========================================= */
+
+@media (max-width: 640px) {
+  .room-card {
+    padding: 10px 14px;
+  }
+
+  .room-avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .room-name {
+    font-size: 14.5px;
+  }
+
+  .chat-list-header {
+    padding: 14px 14px 10px;
+  }
+
+  .create-room-panel {
+    margin: 0 14px 8px;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .dashboard-nav {
+    height: 48px;
+  }
+
+  .room-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .room-card {
+    padding: 8px 16px;
+  }
 }

@@ -6,7 +6,7 @@ import bcryptjs from 'bcryptjs';
 
 export const createChatRoom = async (req, res) => {
   try {
-    const { roomName, messageExpiry, password } = req.body;
+    const { roomName, messageExpiry, password, roomPicture } = req.body;
     const userId = req.userId;
 
     if (!roomName) {
@@ -19,6 +19,7 @@ export const createChatRoom = async (req, res) => {
     const chatRoom = new ChatRoom({
       roomId,
       roomName,
+      roomPicture: roomPicture || null,
       creator: userId,
       participants: [userId],
       roomKey,

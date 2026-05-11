@@ -23,11 +23,12 @@ export const getUserProfile = async (req, res) => {
 export const updateUserProfile = async (req, res) => {
   try {
     const userId = req.userId;
-    const { theme, username } = req.body;
+    const { theme, username, avatar } = req.body;
 
     const updateData = {};
     if (theme) updateData.theme = theme;
     if (username) updateData.username = username;
+    if (avatar) updateData.avatar = avatar;
 
     const user = await User.findByIdAndUpdate(userId, updateData, { new: true });
 
@@ -79,6 +80,33 @@ export const unmuteNotifications = async (req, res) => {
     });
   } catch (error) {
     console.error('Unmute notification error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const uploadAvatar = async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { avatar: avatarUrl },
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      avatarUrl,
+      user: user.toJSON(),
+    });
+  } catch (error) {
+    console.error('Upload avatar error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -9,7 +9,7 @@ import { ArrowLeft, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { encryptMessage, decryptMessage, getStoredKey, storeEncryptionKey, importKey } from '@/utils/encryption';
 
-const MessageBubble = memo(({ msg, isSent, senderName }) => (
+const MessageBubble = memo(({ msg, isSent, senderName, senderAvatar }) => (
   <motion.div
     className={`flex w-full px-2 sm:px-4 ${isSent ? 'justify-end' : 'justify-start'}`}
     initial={{ opacity: 0, y: 6 }}
@@ -17,14 +17,32 @@ const MessageBubble = memo(({ msg, isSent, senderName }) => (
     transition={{ duration: 0.18 }}
     layout
   >
+    {!isSent && senderAvatar && (
+      <div className="message-sender-avatar">
+        {senderAvatar.startsWith('data:') || senderAvatar.startsWith('http') ? (
+          <img src={senderAvatar} alt={senderName} className="sender-avatar-img" />
+        ) : (
+          <span className="sender-avatar-initials">{senderName?.[0]?.toUpperCase() || '?'}</span>
+        )}
+      </div>
+    )}
     <div className={`message-bubble ${isSent ? 'message-sent' : 'message-received'}`}>
-      {senderName && <p className="msg-sender">{senderName}</p>}
+      {senderName && !isSent && <p className="msg-sender">{senderName}</p>}
       <p className="msg-text">{msg.message || msg.encryptedMessage?.slice(0, 30) + '...'}</p>
       <p className="msg-time">
         {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         {isSent && <span style={{ marginLeft: 3, fontSize: 10 }}>&#10003;&#10003;</span>}
       </p>
     </div>
+    {isSent && user?.avatar && (
+      <div className="message-sender-avatar">
+        {user.avatar.startsWith('data:') || user.avatar.startsWith('http') ? (
+          <img src={user.avatar} alt="You" className="sender-avatar-img" />
+        ) : (
+          <span className="sender-avatar-initials">{user?.username?.[0]?.toUpperCase() || 'Y'}</span>
+        )}
+      </div>
+    )}
   </motion.div>
 ));
 
@@ -225,6 +243,7 @@ export default function ChatRoomPage() {
       const currentUserId = userId || user?._id;
       const isSent = msg.senderId === currentUserId || msg.senderId === String(currentUserId);
       const senderName = isSent ? null : (msg.senderName || msg.sender || 'Unknown');
+      const senderAvatar = isSent ? null : (msg.senderAvatar || null);
 
       return (
         <MessageBubble
@@ -232,6 +251,7 @@ export default function ChatRoomPage() {
           msg={msg}
           isSent={isSent}
           senderName={senderName}
+          senderAvatar={senderAvatar}
         />
       );
     });

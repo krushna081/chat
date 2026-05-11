@@ -106,27 +106,27 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  forgotPassword: async (email) => {
+  forgotPasswordRequest: async (email) => {
     set({ loading: true, error: null });
     try {
-      const response = await authAPI.forgotPassword({ email });
+      const response = await authAPI.forgotPasswordRequest({ email });
       set({ loading: false });
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Failed to send reset email';
+      const errorMsg = error.response?.data?.message || 'Failed to send OTP';
       set({ error: errorMsg, loading: false });
       throw new Error(errorMsg);
     }
   },
 
-  resetPassword: async (token, newPassword) => {
+  verifyResetOTP: async (email, otp, newPassword) => {
     set({ loading: true, error: null });
     try {
-      const response = await authAPI.resetPassword({ token, newPassword });
+      const response = await authAPI.verifyResetOTP({ email, otp, newPassword });
       set({ loading: false });
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Failed to reset password';
+      const errorMsg = error.response?.data?.message || 'Invalid OTP';
       set({ error: errorMsg, loading: false });
       throw new Error(errorMsg);
     }

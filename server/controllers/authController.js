@@ -247,7 +247,8 @@ export const resendOtp = async (req, res) => {
   }
 };
 
-export const forgotPassword = async (req, res) => {
+// OTP-based Password Reset - Step 1: Request OTP
+export const forgotPasswordRequest = async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -260,20 +261,84 @@ export const forgotPassword = async (req, res) => {
     if (!user) {
       return res.status(200).json({ 
         success: true, 
-        message: 'If the email exists, a reset link will be sent' 
+        message: 'If an account exists, an OTP will be sent' 
       });
     }
 
-    const resetToken = generateTokens(user._id, 'reset').accessToken;
-    await sendPasswordResetEmail(email, resetToken);
+    const otp = generateOTP();
+    const hashedOtp = await hashOTP(otp);
+
+    await OTP.findOneAndUpdate(
+      { email, type: 'password_reset' },
+      {
+        email,
+        hashedOtp,
+        type: 'password_reset',
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+        attempts: 0,
+      },
+      { upsert: true }
+    );
+
+    await sendOTPEmail(email, otp);
 
     res.status(200).json({ 
       success: true, 
-      message: 'If the email exists, a reset link will be sent' 
+      message: 'If an account exists, an OTP will be sent',
+      email: email.replace(/(.{2})(.*)(@.*)/, '$1***$3'),
     });
   } catch (error) {
-    console.error('Forgot password error:', error);
-    res.status(500).json({ success: false, message: 'Failed to send reset email' });
+    console.error('Forgot password request error:', error);
+    res.status(500).json({ success: false, message: 'Failed to send OTP' });
+  }
+};
+
+// OTP-based Password Reset - Step 2: Verify OTP
+export const verifyResetOtp = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Email, OTP, and new password are required' });
+    }
+
+    if (!validatePassword(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must contain uppercase, lowercase, number, and special character',
+      });
+    }
+
+    const otpRecord = await OTP.findOne({ email, type: 'password_reset' });
+    if (!otpRecord) {
+      return res.status(400).json({ success: false, message: 'OTP expired or not found' });
+    }
+
+    if (otpRecord.attempts >= 5) {
+      return res.status(400).json({ success: false, message: 'Maximum attempts exceeded' });
+    }
+
+    const isOtpValid = await verifyOTP(otp, otpRecord.hashedOtp);
+    if (!isOtpValid) {
+      otpRecord.attempts += 1;
+      await otpRecord.save();
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'User not found' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    await OTP.deleteOne({ email, type: 'password_reset' });
+
+    res.status(200).json({ success: true, message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Verify reset OTP error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

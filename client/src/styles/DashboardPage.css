@@ -619,3 +619,72 @@ html.black .empty-desc {
     padding: 8px 16px;
   }
 }
+
+/* Room Picture Upload */
+.room-picture-upload {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  overflow: hidden;
+  margin: 0 auto 16px;
+  transition: border-color 0.2s;
+}
+
+.room-picture-upload:hover {
+  border-color: #00a884;
+}
+
+html.light .room-picture-upload,
+html.white .room-picture-upload {
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+html.light .room-picture-upload:hover,
+html.white .room-picture-upload:hover {
+  border-color: #128c7e;
+}
+
+html.blue .room-picture-upload {
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+html.blue .room-picture-upload:hover {
+  border-color: #38bdf8;
+}
+
+.room-picture-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.room-picture-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #8696a0;
+  font-size: 11px;
+}
+
+html.light .room-picture-placeholder,
+html.white .room-picture-placeholder {
+  color: #667781;
+}
+
+html.blue .room-picture-placeholder {
+  color: #7dd3fc;
+}
+
+/* Room Avatar with Image */
+.room-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}

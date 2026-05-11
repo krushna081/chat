@@ -569,3 +569,52 @@ html.blue .input-hint {
 html.black .input-hint {
   color: #71717a;
 }
+
+/* Resend OTP Link */
+.resend-otp-link {
+  background: none;
+  border: none;
+  color: #8696a0;
+  font-size: 13px;
+  cursor: pointer;
+  margin-bottom: 16px;
+  padding: 8px 0;
+  transition: color 0.15s;
+  text-align: center;
+  width: 100%;
+}
+
+.resend-otp-link:hover {
+  color: #00a884;
+}
+
+.resend-otp-link:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+html.light .resend-otp-link,
+html.white .resend-otp-link {
+  color: #667781;
+}
+
+html.light .resend-otp-link:hover,
+html.white .resend-otp-link:hover {
+  color: #128c7e;
+}
+
+html.blue .resend-otp-link {
+  color: #7dd3fc;
+}
+
+html.blue .resend-otp-link:hover {
+  color: #38bdf8;
+}
+
+html.black .resend-otp-link {
+  color: #a1a1aa;
+}
+
+html.black .resend-otp-link:hover {
+  color: #22c55e;
+}

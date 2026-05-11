@@ -3,17 +3,25 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/context/store';
 import toast from 'react-hot-toast';
-import { Lock, Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, ArrowLeft, Shield } from 'lucide-react';
 import '@/styles/LoginPage.css';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  
+  // Forgot password flow states
+  const [forgotStep, setForgotStep] = useState(0); // 0: show link, 1: enter email, 2: enter OTP + new password
   const [forgotEmail, setForgotEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
-  const { login, forgotPassword, loading } = useAuthStore();
+  const [maskedEmail, setMaskedEmail] = useState('');
+  
+  const { login, forgotPasswordRequest, verifyResetOTP, loading } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -27,7 +35,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleForgotPassword = async (e) => {
+  const handleForgotPasswordRequest = async (e) => {
     e.preventDefault();
     if (!forgotEmail.trim()) {
       toast.error('Please enter your email address');
@@ -35,9 +43,10 @@ export default function LoginPage() {
     }
     setForgotLoading(true);
     try {
-      await forgotPassword(forgotEmail);
-      toast.success('If an account exists, a reset link will be sent');
-      setShowForgotPassword(false);
+      const result = await forgotPasswordRequest(forgotEmail);
+      setMaskedEmail(result.email || forgotEmail.replace(/(.{2})(.*)(@.*)/, '$1***$3'));
+      setForgotStep(2);
+      toast.success('OTP sent to your email');
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -45,7 +54,56 @@ export default function LoginPage() {
     }
   };
 
-  if (showForgotPassword) {
+  const handleVerifyResetOTP = async (e) => {
+    e.preventDefault();
+    
+    if (!resetOtp.trim()) {
+      toast.error('Please enter the OTP');
+      return;
+    }
+    if (!newPassword.trim()) {
+      toast.error('Please enter a new password');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      await verifyResetOTP(forgotEmail, resetOtp, newPassword);
+      toast.success('Password reset successful! Please login.');
+      setForgotStep(0);
+      setForgotEmail('');
+      setResetOtp('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setForgotLoading(true);
+    try {
+      await forgotPasswordRequest(forgotEmail);
+      toast.success('OTP resent to your email');
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  // Step 2: Enter OTP and new password
+  if (forgotStep === 2) {
     return (
       <div className="auth-page">
         <div className="auth-bg-pattern" />
@@ -57,7 +115,116 @@ export default function LoginPage() {
             transition={{ duration: 0.3 }}
           >
             <button 
-              onClick={() => setShowForgotPassword(false)} 
+              onClick={() => { setForgotStep(1); setResetOtp(''); }} 
+              className="forgot-back-btn"
+            >
+              <ArrowLeft size={18} /> Back
+            </button>
+            
+            <div className="auth-header">
+              <div className="auth-logo">&#128274;</div>
+              <h1 className="auth-title">Reset Password</h1>
+              <p className="auth-subtitle">Enter the OTP sent to {maskedEmail}</p>
+            </div>
+
+            <form onSubmit={handleVerifyResetOTP} className="auth-form">
+              <div className="form-group">
+                <label className="form-label">Enter OTP</label>
+                <div className="input-wrapper">
+                  <Shield size={18} className="input-icon" />
+                  <input
+                    type="text"
+                    value={resetOtp}
+                    onChange={(e) => setResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="6-digit OTP"
+                    className="input-primary"
+                    required
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">New Password</label>
+                <div className="input-wrapper">
+                  <Lock size={18} className="input-icon" />
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="New password"
+                    className="input-primary"
+                    required
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="input-suffix"
+                    tabIndex={-1}
+                  >
+                    {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <p className="input-hint">Min 8 chars, uppercase, lowercase, number, special</p>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Confirm Password</label>
+                <div className="input-wrapper">
+                  <Lock size={18} className="input-icon" />
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm password"
+                    className="input-primary"
+                    required
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleResendOTP}
+                className="resend-otp-link"
+                disabled={forgotLoading}
+              >
+                Didn't receive OTP? Resend
+              </button>
+
+              <motion.button
+                type="submit"
+                disabled={forgotLoading}
+                className="auth-submit-btn"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+              >
+                {forgotLoading ? 'Resetting...' : 'Reset Password'}
+              </motion.button>
+            </form>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 1: Enter email
+  if (forgotStep === 1) {
+    return (
+      <div className="auth-page">
+        <div className="auth-bg-pattern" />
+        <div className="auth-container">
+          <motion.div
+            className="auth-card"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <button 
+              onClick={() => setForgotStep(0)} 
               className="forgot-back-btn"
             >
               <ArrowLeft size={18} /> Back to login
@@ -66,10 +233,10 @@ export default function LoginPage() {
             <div className="auth-header">
               <div className="auth-logo">&#128274;</div>
               <h1 className="auth-title">Reset Password</h1>
-              <p className="auth-subtitle">Enter your email to receive a reset link</p>
+              <p className="auth-subtitle">Enter your email to receive an OTP</p>
             </div>
 
-            <form onSubmit={handleForgotPassword} className="auth-form">
+            <form onSubmit={handleForgotPasswordRequest} className="auth-form">
               <div className="form-group">
                 <label className="form-label">Email</label>
                 <div className="input-wrapper">
@@ -93,7 +260,7 @@ export default function LoginPage() {
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
               >
-                {forgotLoading ? 'Sending...' : 'Send Reset Link'}
+                {forgotLoading ? 'Sending OTP...' : 'Send OTP'}
               </motion.button>
             </form>
           </motion.div>
@@ -161,7 +328,7 @@ export default function LoginPage() {
 
             <button
               type="button"
-              onClick={() => setShowForgotPassword(true)}
+              onClick={() => setForgotStep(1)}
               className="forgot-password-link"
             >
               Forgot password?

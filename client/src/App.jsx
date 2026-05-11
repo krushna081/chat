@@ -12,6 +12,7 @@ import DashboardPage from '@/pages/DashboardPage';
 import ChatRoomPage from '@/pages/ChatRoomPage';
 import SettingsPage from '@/pages/SettingsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
+import HowItWorksPage from '@/pages/see how it works';
 
 const PageLoader = () => (
   <div style={{
@@ -78,6 +79,7 @@ export default function App() {
           <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage />} />
           <Route path="/signup" element={isAuthenticated ? <Navigate to="/dashboard" /> : <SignupPage />} />
           <Route path="/verify-otp" element={<OTPVerificationPage />} />
+          <Route path="/how-it-works" element={isAuthenticated ? <Navigate to="/dashboard" /> : <HowItWorksPage />} />
 
           <Route
             path="/dashboard"

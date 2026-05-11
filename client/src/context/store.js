@@ -133,6 +133,8 @@ export const useAuthStore = create((set, get) => ({
   },
 
   setUser: (user) => set({ user, isAuthenticated: !!user }),
+  
+  resetLoading: () => set({ loading: false }),
 }));
 
 export const useChatStore = create((set, get) => ({

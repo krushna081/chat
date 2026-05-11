@@ -1,18 +1,19 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/context/store';
 import toast from 'react-hot-toast';
-import { Lock, Mail, Eye, EyeOff, ArrowLeft, Shield } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, ArrowLeft, Shield, Loader2 } from 'lucide-react';
 import '@/styles/LoginPage.css';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Forgot password flow states
-  const [forgotStep, setForgotStep] = useState(0); // 0: show link, 1: enter email, 2: enter OTP + new password
+  const [forgotStep, setForgotStep] = useState(0);
   const [forgotEmail, setForgotEmail] = useState('');
   const [resetOtp, setResetOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -21,17 +22,43 @@ export default function LoginPage() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [maskedEmail, setMaskedEmail] = useState('');
   
-  const { login, forgotPasswordRequest, verifyResetOTP, loading } = useAuthStore();
+  const { login, forgotPasswordRequest, verifyResetOTP, resetLoading } = useAuthStore();
   const navigate = useNavigate();
+
+  // Reset loading state on mount/unmount
+  useEffect(() => {
+    return () => {
+      resetLoading();
+    };
+  }, [resetLoading]);
+
+  // Check if form is valid
+  const isFormValid = useMemo(() => {
+    const emailValid = email.trim().length > 0 && email.includes('@');
+    const passwordValid = password.length >= 1;
+    return emailValid && passwordValid;
+  }, [email, password]);
+
+  // Reset submitting state when user types
+  useEffect(() => {
+    if (isSubmitting) {
+      setIsSubmitting(false);
+    }
+  }, [email, password]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!isFormValid || isSubmitting) return;
+
+    setIsSubmitting(true);
     try {
       await login(email, password);
       toast.success('Login successful!');
       navigate('/dashboard');
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.message || 'Login failed');
+      setIsSubmitting(false);
     }
   };
 
@@ -48,7 +75,7 @@ export default function LoginPage() {
       setForgotStep(2);
       toast.success('OTP sent to your email');
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.message || 'Failed to send OTP');
     } finally {
       setForgotLoading(false);
     }
@@ -61,28 +88,19 @@ export default function LoginPage() {
     const passwordValue = newPassword.trim();
     const confirmValue = confirmPassword.trim();
 
-    if (!otpValue) {
-      toast.error('Please enter the OTP');
-      return;
-    }
-    if (otpValue.length !== 6) {
+    if (!otpValue || otpValue.length !== 6) {
       toast.error('OTP must be 6 digits');
       return;
     }
-    if (!passwordValue) {
-      toast.error('Please enter a new password');
+    if (!passwordValue || passwordValue.length < 8) {
+      toast.error('Password must be at least 8 characters');
       return;
     }
     if (passwordValue !== confirmValue) {
       toast.error('Passwords do not match');
       return;
     }
-    if (passwordValue.length < 8) {
-      toast.error('Password must be at least 8 characters');
-      return;
-    }
 
-    // Check password requirements
     const hasUpper = /[A-Z]/.test(passwordValue);
     const hasLower = /[a-z]/.test(passwordValue);
     const hasNumber = /[0-9]/.test(passwordValue);
@@ -94,11 +112,8 @@ export default function LoginPage() {
     }
 
     setForgotLoading(true);
-    console.log('Sending reset request:', { email: forgotEmail, otp: otpValue, passwordProvided: !!passwordValue });
-    
     try {
-      const result = await verifyResetOTP(forgotEmail, otpValue, passwordValue);
-      console.log('Reset result:', result);
+      await verifyResetOTP(forgotEmail, otpValue, passwordValue);
       toast.success('Password reset successful! Please login with your new password.');
       setForgotStep(0);
       setForgotEmail('');
@@ -106,8 +121,7 @@ export default function LoginPage() {
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      console.error('Reset error:', error);
-      toast.error(error.message || 'Failed to reset password. Please try again.');
+      toast.error(error.message || 'Failed to reset password');
     } finally {
       setForgotLoading(false);
     }
@@ -119,13 +133,13 @@ export default function LoginPage() {
       await forgotPasswordRequest(forgotEmail);
       toast.success('OTP resent to your email');
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.message || 'Failed to resend OTP');
     } finally {
       setForgotLoading(false);
     }
   };
 
-  // Step 2: Enter OTP and new password
+  // Step 2: OTP + New Password
   if (forgotStep === 2) {
     return (
       <div className="auth-page">
@@ -145,7 +159,7 @@ export default function LoginPage() {
             </button>
             
             <div className="auth-header">
-              <div className="auth-logo">&#128274;</div>
+              <div className="auth-logo">🔒</div>
               <h1 className="auth-title">Reset Password</h1>
               <p className="auth-subtitle">Enter the OTP sent to {maskedEmail}</p>
             </div>
@@ -161,8 +175,6 @@ export default function LoginPage() {
                     onChange={(e) => setResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="6-digit OTP"
                     className="input-primary"
-                    required
-                    autoComplete="one-time-code"
                     maxLength={6}
                   />
                 </div>
@@ -178,14 +190,11 @@ export default function LoginPage() {
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="New password"
                     className="input-primary"
-                    required
-                    autoComplete="new-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
                     className="input-suffix"
-                    tabIndex={-1}
                   >
                     {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -203,8 +212,6 @@ export default function LoginPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm password"
                     className="input-primary"
-                    required
-                    autoComplete="new-password"
                   />
                 </div>
               </div>
@@ -222,10 +229,14 @@ export default function LoginPage() {
                 type="submit"
                 disabled={forgotLoading}
                 className="auth-submit-btn"
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
+                whileHover={{ scale: forgotLoading ? 1 : 1.01 }}
+                whileTap={{ scale: forgotLoading ? 1 : 0.99 }}
               >
-                {forgotLoading ? 'Resetting...' : 'Reset Password'}
+                {forgotLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="animate-spin" size={18} /> Resetting...
+                  </span>
+                ) : 'Reset Password'}
               </motion.button>
             </form>
           </motion.div>
@@ -254,7 +265,7 @@ export default function LoginPage() {
             </button>
             
             <div className="auth-header">
-              <div className="auth-logo">&#128274;</div>
+              <div className="auth-logo">🔒</div>
               <h1 className="auth-title">Reset Password</h1>
               <p className="auth-subtitle">Enter your email to receive an OTP</p>
             </div>
@@ -270,20 +281,22 @@ export default function LoginPage() {
                     onChange={(e) => setForgotEmail(e.target.value)}
                     placeholder="you@example.com"
                     className="input-primary"
-                    required
-                    autoComplete="email"
                   />
                 </div>
               </div>
 
               <motion.button
                 type="submit"
-                disabled={forgotLoading}
+                disabled={forgotLoading || !forgotEmail.trim()}
                 className="auth-submit-btn"
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
+                whileHover={{ scale: forgotLoading ? 1 : 1.01 }}
+                whileTap={{ scale: forgotLoading ? 1 : 0.99 }}
               >
-                {forgotLoading ? 'Sending OTP...' : 'Send OTP'}
+                {forgotLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="animate-spin" size={18} /> Sending OTP...
+                  </span>
+                ) : 'Send OTP'}
               </motion.button>
             </form>
           </motion.div>
@@ -292,6 +305,7 @@ export default function LoginPage() {
     );
   }
 
+  // Main login form
   return (
     <div className="auth-page">
       <div className="auth-bg-pattern" />
@@ -303,7 +317,7 @@ export default function LoginPage() {
           transition={{ duration: 0.3 }}
         >
           <div className="auth-header">
-            <div className="auth-logo">&#128274;</div>
+            <div className="auth-logo">🔒</div>
             <h1 className="auth-title">Welcome back</h1>
             <p className="auth-subtitle">Sign in to your secure chat</p>
           </div>
@@ -319,7 +333,6 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   className="input-primary"
-                  required
                   autoComplete="email"
                 />
               </div>
@@ -335,14 +348,12 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   className="input-primary"
-                  required
                   autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="input-suffix"
-                  tabIndex={-1}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -359,12 +370,16 @@ export default function LoginPage() {
 
             <motion.button
               type="submit"
-              disabled={loading}
+              disabled={!isFormValid || isSubmitting}
               className="auth-submit-btn"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
+              whileHover={{ scale: isSubmitting ? 1 : 1.01 }}
+              whileTap={{ scale: isSubmitting ? 1 : 0.99 }}
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="animate-spin" size={18} /> Signing in...
+                </span>
+              ) : 'Sign in'}
             </motion.button>
           </form>
 

@@ -74,7 +74,7 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
       ? process.env.RESEND_TEST_EMAIL
       : email;
 
-    const CLIENT_URL = process.env.CLIENT_URL || 'https://chat3-kappa.vercel.app';
+    const CLIENT_URL = process.env.CLIENT_URL || 'https://chat-khaki-two-48.vercel.app';
     const resetUrl = `${CLIENT_URL}/reset-password?token=${resetToken}`;
 
     const response = await axios.post('https://api.resend.com/emails', {

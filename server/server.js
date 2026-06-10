@@ -86,13 +86,18 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Database connection and server start
+// Database connection (non-blocking)
 mongoConnect();
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 Socket.io ready`);
-});
 
-export { io };
+// Only listen when run directly (not imported as module by Vercel)
+const isVercel = process.env.VERCEL === '1';
+if (!isVercel) {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📡 Socket.io ready`);
+  });
+}
+
+export { app, server, io };

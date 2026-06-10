@@ -84,29 +84,4 @@ export const unmuteNotifications = async (req, res) => {
   }
 };
 
-export const uploadAvatar = async (req, res) => {
-  try {
-    const userId = req.userId;
-    
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No file uploaded' });
-    }
 
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
-    
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { avatar: avatarUrl },
-      { new: true }
-    );
-
-    res.status(200).json({
-      success: true,
-      avatarUrl,
-      user: user.toJSON(),
-    });
-  } catch (error) {
-    console.error('Upload avatar error:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-};

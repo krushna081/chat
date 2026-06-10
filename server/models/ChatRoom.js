@@ -13,6 +13,10 @@ const chatRoomSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    roomPicture: {
+      type: String,
+      default: null,
+    },
     isPrivate: {
       type: Boolean,
       default: true,

@@ -1,27 +1,21 @@
 import axios from 'axios';
 
-const DEFAULT_API_URL = 'https://api-chat-1xj6.onrender.com/api';
-
-const getDefaultApiUrl = () => {
+const getBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
   if (typeof window === 'undefined') {
     return 'http://localhost:5000/api';
   }
-
-  const { protocol, hostname, host, port } = window.location;
-
+  const { protocol, hostname, host } = window.location;
   if (hostname.endsWith('.devtunnels.ms')) {
     return `${protocol}//${host}/api`;
   }
-
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || port === '5000') {
-    return `${protocol}//${host}/api`;
-  }
-
-  return DEFAULT_API_URL;
+  return 'http://localhost:5000/api';
 };
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || getDefaultApiUrl(),
+  baseURL: getBaseUrl(),
   withCredentials: true,
   timeout: 15000,
 });

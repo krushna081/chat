@@ -23,18 +23,26 @@ const setupSocketHandlers = (io) => {
     console.log(`✅ User ${socket.userId} connected`);
 
     // Update user online status
-    await User.findByIdAndUpdate(socket.userId, { isOnline: true });
+    try {
+      await User.findByIdAndUpdate(socket.userId, { isOnline: true });
+    } catch (err) {
+      console.error('Failed to update online status:', err.message);
+    }
 
     socket.on('join_room', async (roomId) => {
-      socket.join(roomId);
-      const room = await ChatRoom.findOne({ roomId });
+      try {
+        socket.join(roomId);
+        const room = await ChatRoom.findOne({ roomId });
 
-      io.to(roomId).emit('user_joined', {
-        userId: socket.userId,
-        message: 'User joined the room',
-      });
+        io.to(roomId).emit('user_joined', {
+          userId: socket.userId,
+          message: 'User joined the room',
+        });
 
-      console.log(`👤 User ${socket.userId} joined room ${roomId}`);
+        console.log(`👤 User ${socket.userId} joined room ${roomId}`);
+      } catch (err) {
+        console.error('Join room error:', err.message);
+      }
     });
 
     socket.on('send_message', async (data) => {
@@ -99,10 +107,14 @@ const setupSocketHandlers = (io) => {
     });
 
     socket.on('disconnect', async () => {
-      await User.findByIdAndUpdate(socket.userId, {
-        isOnline: false,
-        lastSeen: new Date(),
-      });
+      try {
+        await User.findByIdAndUpdate(socket.userId, {
+          isOnline: false,
+          lastSeen: new Date(),
+        });
+      } catch (err) {
+        console.error('Failed to update disconnect status:', err.message);
+      }
 
       console.log(`❌ User ${socket.userId} disconnected`);
     });

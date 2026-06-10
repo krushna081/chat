@@ -22,7 +22,7 @@ const messageSchema = new mongoose.Schema(
     },
     iv: {
       type: String,
-      required: true,
+      default: null,
     },
     deliveryStatus: {
       type: String,

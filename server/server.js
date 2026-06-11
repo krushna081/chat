@@ -60,6 +60,12 @@ app.use(cookieParser());
 // CORS
 app.use(cors(corsOptions));
 
+// Allow public HTTPS sites (like Vercel) to access localhost backend
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Private-Network', 'true');
+  next();
+});
+
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,

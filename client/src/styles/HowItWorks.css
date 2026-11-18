@@ -7,7 +7,7 @@
 }
 
 html.light .how-it-works-page,
-html.white .how-it-works-page {
+html.light .how-it-works-page {
   background: #f0f2f5;
   color: #111b21;
 }
@@ -46,12 +46,12 @@ html.black .how-it-works-page {
 }
 
 html.light .hiw-back,
-html.white .hiw-back {
+html.light .hiw-back {
   color: #54656f;
 }
 
 html.light .hiw-back:hover,
-html.white .hiw-back:hover {
+html.light .hiw-back:hover {
   color: #111b21;
 }
 
@@ -91,11 +91,11 @@ html.black .hiw-back:hover {
 }
 
 html.light .brand-name,
-html.white .brand-name {
-  color: #128c7e;
+html.light .brand-name {
+  color: #0f766e;
 }
 
-html:not(.light):not(.white):not(.blue):not(.black) .brand-name {
+html.dark .brand-name {
   color: #00a884;
 }
 
@@ -144,25 +144,23 @@ html.black .brand-name {
 }
 
 html.light .nav-action-btn.secondary,
-html.white .nav-action-btn.secondary {
+html.light .nav-action-btn.secondary {
   color: #54656f;
   border-color: rgba(0, 0, 0, 0.1);
 }
 
 html.light .nav-action-btn.secondary:hover,
-html.white .nav-action-btn.secondary:hover {
+html.light .nav-action-btn.secondary:hover {
   background: rgba(0, 0, 0, 0.03);
   color: #111b21;
 }
 
-html.light .nav-action-btn.primary,
-html.white .nav-action-btn.primary {
-  background: #128c7e;
+html.light .nav-action-btn.primary {
+  background: #0f766e;
 }
 
-html.light .nav-action-btn.primary:hover,
-html.white .nav-action-btn.primary:hover {
-  background: #075e54;
+html.light .nav-action-btn.primary:hover {
+  background: #115e59;
 }
 
 html.blue .nav-action-btn.primary {
@@ -223,7 +221,7 @@ html.black .nav-action-btn.secondary:hover {
 }
 
 html.light .hiw-title,
-html.white .hiw-title {
+html.light .hiw-title {
   color: #111b21;
 }
 
@@ -242,7 +240,7 @@ html.black .hiw-title {
 }
 
 html.light .hiw-desc,
-html.white .hiw-desc {
+html.light .hiw-desc {
   color: #667781;
 }
 
@@ -276,13 +274,13 @@ html.black .hiw-desc {
 }
 
 html.light .hiw-step,
-html.white .hiw-step {
+html.light .hiw-step {
   background: rgba(0, 0, 0, 0.02);
   border-color: rgba(0, 0, 0, 0.05);
 }
 
 html.light .hiw-step:hover,
-html.white .hiw-step:hover {
+html.light .hiw-step:hover {
   background: rgba(0, 0, 0, 0.04);
 }
 
@@ -321,9 +319,9 @@ html.black .hiw-step:hover {
 }
 
 html.light .step-number,
-html.white .step-number {
+html.light .step-number {
   background: rgba(18, 140, 126, 0.15);
-  color: #128c7e;
+  color: #0f766e;
 }
 
 html.blue .step-number {
@@ -352,7 +350,7 @@ html.black .step-number {
 }
 
 html.light .step-title,
-html.white .step-title {
+html.light .step-title {
   color: #111b21;
 }
 
@@ -371,7 +369,7 @@ html.black .step-title {
 }
 
 html.light .step-desc,
-html.white .step-desc {
+html.light .step-desc {
   color: #667781;
 }
 
@@ -394,7 +392,7 @@ html.black .step-desc {
 }
 
 html.light .cta-text,
-html.white .cta-text {
+html.light .cta-text {
   color: #667781;
 }
 
@@ -447,25 +445,23 @@ html.black .cta-text {
 }
 
 html.light .cta-secondary,
-html.white .cta-secondary {
+html.light .cta-secondary {
   color: #54656f;
   border-color: rgba(0, 0, 0, 0.1);
 }
 
 html.light .cta-secondary:hover,
-html.white .cta-secondary:hover {
+html.light .cta-secondary:hover {
   background: rgba(0, 0, 0, 0.03);
   color: #111b21;
 }
 
-html.light .cta-primary,
-html.white .cta-primary {
-  background: #128c7e;
+html.light .cta-primary {
+  background: #0f766e;
 }
 
-html.light .cta-primary:hover,
-html.white .cta-primary:hover {
-  background: #075e54;
+html.light .cta-primary:hover {
+  background: #115e59;
 }
 
 html.blue .cta-primary {

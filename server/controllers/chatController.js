@@ -1,149 +1,198 @@
+import crypto from 'node:crypto';
 import ChatRoom from '../models/ChatRoom.js';
 import Message from '../models/Message.js';
-import User from '../models/User.js';
-import crypto from 'crypto';
-import bcryptjs from 'bcryptjs';
+import { AppError, asyncHandler } from '../middleware/errors.js';
+import {
+  isValidEncryptedPayload,
+  isValidImage,
+  isValidRoomId,
+  isValidRoomName,
+  sanitizeText,
+} from '../utils/validation.js';
+import {
+  findMemberRoom,
+  isParticipant,
+  serializeMessage,
+  serializeRoom,
+} from '../utils/roomAccess.js';
+import { isValidExpiry } from '../utils/messageExpiry.js';
 
-export const createChatRoom = async (req, res) => {
-  try {
-    const { roomName, messageExpiry, password, roomPicture } = req.body;
-    const userId = req.userId;
+const PAGE_SIZE = 50;
 
-    if (!roomName) {
-      return res.status(400).json({ success: false, message: 'Room name is required' });
-    }
+export const createChatRoom = asyncHandler(async (req, res) => {
+  const roomName = sanitizeText(req.body?.roomName, 80);
+  const messageExpiry = req.body?.messageExpiry || '24h';
+  const password = req.body?.password;
+  const roomPicture = req.body?.roomPicture || null;
 
-    const roomId = crypto.randomBytes(8).toString('hex');
-    const roomKey = crypto.randomBytes(32).toString('hex');
-
-    const chatRoom = new ChatRoom({
-      roomId,
-      roomName,
-      roomPicture: roomPicture || null,
-      creator: userId,
-      participants: [userId],
-      roomKey,
-      messageExpiry: messageExpiry || '24h',
-      password: password ? password : null,
-      isPrivate: !!password,
-    });
-
-    await chatRoom.save();
-
-    res.status(201).json({
-      success: true,
-      message: 'Chat room created',
-      chatRoom,
-    });
-  } catch (error) {
-    console.error('Create room error:', error);
-    res.status(500).json({ success: false, message: error.message });
+  if (!isValidRoomName(roomName)) {
+    throw new AppError(400, 'Room name must be between 1 and 80 characters');
   }
-};
-
-export const joinChatRoom = async (req, res) => {
-  try {
-    const { roomId, password } = req.body;
-    const userId = req.userId;
-
-    const chatRoom = await ChatRoom.findOne({ roomId });
-
-    if (!chatRoom) {
-      return res.status(404).json({ success: false, message: 'Room not found' });
-    }
-
-    // If the room has a password, require the client to provide it and verify against the hashed value
-    if (chatRoom.password) {
-      if (!password) {
-        return res.status(403).json({ success: false, message: 'Password required' });
-      }
-
-      const isMatch = await bcryptjs.compare(password, chatRoom.password);
-      if (!isMatch) {
-        return res.status(403).json({ success: false, message: 'Invalid password' });
-      }
-    }
-
-    if (!chatRoom.participants.includes(userId)) {
-      chatRoom.participants.push(userId);
-      await chatRoom.save();
-    }
-
-    // Return the room info including the roomKey so clients can use it for message encryption
-    res.status(200).json({
-      success: true,
-      message: 'Joined room',
-      chatRoom,
-    });
-  } catch (error) {
-    console.error('Join room error:', error);
-    res.status(500).json({ success: false, message: error.message });
+  if (!isValidExpiry(messageExpiry)) {
+    throw new AppError(400, 'Invalid message expiry');
   }
-};
-
-export const getChatRooms = async (req, res) => {
-  try {
-    const chatRooms = await ChatRoom.find({})
-      .populate('creator', 'username')
-      .sort({ lastActivity: -1 });
-
-    res.status(200).json({
-      success: true,
-      chatRooms,
-    });
-  } catch (error) {
-    console.error('Get rooms error:', error);
-    res.status(500).json({ success: false, message: error.message });
+  if (password !== undefined && password !== null && password !== '') {
+    if (
+      typeof password !== 'string' ||
+      password.length < 8 ||
+      Buffer.byteLength(password, 'utf8') > 72
+    ) {
+      throw new AppError(400, 'Room password must be between 8 and 72 characters');
+    }
   }
-};
+  if (!isValidImage(roomPicture)) {
+    throw new AppError(400, 'Room picture must be an HTTPS URL or a supported image under 512 KB');
+  }
 
-export const getMessages = async (req, res) => {
-  try {
-    const { roomId } = req.params;
-    const { page = 1 } = req.query;
-    const pageSize = 50;
+  const chatRoom = await ChatRoom.create({
+    roomId: crypto.randomBytes(8).toString('hex'),
+    roomName,
+    roomPicture: roomPicture || null,
+    creator: req.userId,
+    participants: [req.userId],
+    roomKey: crypto.randomBytes(32).toString('hex'),
+    messageExpiry,
+    password: password || null,
+    isPrivate: Boolean(password),
+  });
 
-    const messages = await Message.find({ roomId })
+  return res.status(201).json({
+    success: true,
+    message: 'Chat room created',
+    chatRoom: serializeRoom(chatRoom, { includeKey: true }),
+  });
+});
+
+export const joinChatRoom = asyncHandler(async (req, res) => {
+  const roomId = String(req.body?.roomId || '');
+  const password = req.body?.password;
+
+  if (!isValidRoomId(roomId)) {
+    throw new AppError(400, 'Invalid room id');
+  }
+
+  const chatRoom = await ChatRoom.findOne({ roomId }).select('+password +roomKey');
+  if (!chatRoom) {
+    throw new AppError(404, 'Room not found');
+  }
+
+  const alreadyMember = isParticipant(chatRoom, req.userId);
+  const isPrivateRoom = Boolean(chatRoom.isPrivate || chatRoom.password);
+
+  if (isPrivateRoom && !alreadyMember) {
+    if (!chatRoom.password) {
+      throw new AppError(403, 'This room has no usable password configured');
+    }
+    if (typeof password !== 'string' || password.length === 0 || password.length > 128) {
+      throw new AppError(403, 'Password required');
+    }
+    const passwordMatches = await chatRoom.comparePassword(password);
+    if (!passwordMatches) {
+      throw new AppError(403, 'Invalid room password');
+    }
+  }
+
+  if (!alreadyMember) {
+    await ChatRoom.updateOne({ _id: chatRoom._id }, { $addToSet: { participants: req.userId } });
+  }
+
+  const joinedRoom = await ChatRoom.findById(chatRoom._id).select('+roomKey +password');
+  return res.status(200).json({
+    success: true,
+    message: 'Joined room',
+    chatRoom: serializeRoom(joinedRoom, { includeKey: true }),
+  });
+});
+
+export const getChatRooms = asyncHandler(async (req, res) => {
+  const chatRooms = await ChatRoom.find({
+    $or: [{ isPrivate: false, password: null }, { participants: req.userId }],
+  })
+    .select('-password -roomKey')
+    .populate('creator', 'username avatar')
+    .sort({ lastActivity: -1 })
+    .limit(200)
+    .lean();
+
+  return res.status(200).json({
+    success: true,
+    chatRooms: chatRooms.map((room) => ({
+      ...serializeRoom(room),
+      isMember: isParticipant(room, req.userId),
+    })),
+  });
+});
+
+export const getMessages = asyncHandler(async (req, res) => {
+  const roomId = String(req.params.roomId || '');
+  if (!isValidRoomId(roomId)) {
+    throw new AppError(400, 'Invalid room id');
+  }
+
+  await findMemberRoom(roomId, req.userId);
+
+  const requestedPage = Number.parseInt(req.query.page, 10);
+  const page = Number.isFinite(requestedPage) ? Math.min(Math.max(requestedPage, 1), 10_000) : 1;
+
+  const [messages, total] = await Promise.all([
+    Message.find({ roomId })
+      .select('-message')
       .sort({ createdAt: -1 })
-      .skip((page - 1) * pageSize)
-      .limit(pageSize)
+      .skip((page - 1) * PAGE_SIZE)
+      .limit(PAGE_SIZE)
       .populate('senderId', 'username avatar')
-      .lean();
+      .lean(),
+    Message.countDocuments({ roomId }),
+  ]);
 
-    const total = await Message.countDocuments({ roomId });
+  const safeMessages = messages.reverse().map((message) => ({
+    ...serializeMessage(message),
+    senderId: String(message.senderId?._id || message.senderId),
+    senderName: message.senderId?.username || 'Unknown',
+    senderAvatar: message.senderId?.avatar || null,
+  }));
 
-    res.status(200).json({
-      success: true,
-      messages: messages.reverse(),
-      pagination: {
-        page,
-        pageSize,
-        total,
-        pages: Math.ceil(total / pageSize),
-      },
-    });
-  } catch (error) {
-    console.error('Get messages error:', error);
-    res.status(500).json({ success: false, message: error.message });
+  return res.status(200).json({
+    success: true,
+    messages: safeMessages,
+    pagination: {
+      page,
+      pageSize: PAGE_SIZE,
+      total,
+      pages: Math.ceil(total / PAGE_SIZE),
+    },
+  });
+});
+
+export const leaveChatRoom = asyncHandler(async (req, res) => {
+  const roomId = String(req.params.roomId || '');
+  if (!isValidRoomId(roomId)) {
+    throw new AppError(400, 'Invalid room id');
   }
-};
 
-export const leaveChatRoom = async (req, res) => {
-  try {
-    const { roomId } = req.params;
-    const userId = req.userId;
-
-    await ChatRoom.findOneAndUpdate(
-      { roomId },
-      { $pull: { participants: userId } }
-    );
-
-    res.status(200).json({
-      success: true,
-      message: 'Left room',
-    });
-  } catch (error) {
-    console.error('Leave room error:', error);
-    res.status(500).json({ success: false, message: error.message });
+  const room = await ChatRoom.findOne({ roomId });
+  if (!room) {
+    throw new AppError(404, 'Room not found');
   }
+  if (!isParticipant(room, req.userId)) {
+    throw new AppError(403, 'You are not a member of this room');
+  }
+
+  await ChatRoom.updateOne({ _id: room._id }, { $pull: { participants: req.userId } });
+
+  const io = req.app.get('io');
+  if (io) {
+    const sockets = await io.in(roomId).fetchSockets();
+    sockets
+      .filter((socket) => String(socket.userId) === String(req.userId))
+      .forEach((socket) => socket.leave(roomId));
+  }
+
+  return res.status(200).json({ success: true, message: 'Left room' });
+});
+
+export const validateMessagePayload = (payload) => {
+  if (!payload || typeof payload !== 'object') return false;
+  if (!isValidRoomId(payload.roomId)) return false;
+  return isValidEncryptedPayload(payload.encryptedMessage, payload.iv);
 };

@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './styles/globals.css';
 
-// Global error handler
 window.addEventListener('error', (event) => {
   console.error('Global error:', event.error);
 });
@@ -11,6 +10,14 @@ window.addEventListener('error', (event) => {
 window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
 });
+
+try {
+  const storedTheme = localStorage.getItem('theme');
+  document.documentElement.classList.add(storedTheme === 'light' ? 'light' : 'dark');
+  document.documentElement.style.colorScheme = storedTheme === 'light' ? 'light' : 'dark';
+} catch {
+  document.documentElement.classList.add('dark');
+}
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -29,38 +36,11 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#0b141a',
-          color: '#e9edef',
-          padding: '20px',
-          textAlign: 'center',
-        }}>
-          <h1 style={{ fontSize: '24px', marginBottom: '16px' }}>Something went wrong</h1>
-          <p style={{ color: '#8696a0', marginBottom: '20px' }}>
-            {this.state.error?.message || 'An unexpected error occurred'}
-          </p>
-          <button
-            onClick={() => {
-              localStorage.removeItem('user');
-              localStorage.removeItem('accessToken');
-              window.location.href = '/';
-            }}
-            style={{
-              background: '#00a884',
-              color: '#fff',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-            }}
-          >
-            Go to Home
+        <div className="error-fallback">
+          <h1>Something went wrong</h1>
+          <p>{this.state.error?.message || 'An unexpected error occurred'}</p>
+          <button type="button" onClick={() => window.location.assign('/')}>
+            Go home
           </button>
         </div>
       );

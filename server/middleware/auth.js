@@ -1,35 +1,31 @@
-import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+import { AppError, asyncHandler } from './errors.js';
+import { getAccessTokenFromRequest, verifyAccessToken } from '../utils/auth.js';
 
-export const authenticate = (req, res, next) => {
+export const authenticate = asyncHandler(async (req, res, next) => {
+  const token = getAccessTokenFromRequest(req);
+  if (!token) {
+    throw new AppError(401, 'Authentication required');
+  }
+
+  let decoded;
   try {
-    const token = req.cookies.accessToken || req.headers.authorization?.split(' ')[1];
-
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'No token provided' });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-    next();
-  } catch (error) {
-    return res.status(401).json({ success: false, message: 'Invalid token' });
-  }
-};
-
-export const validateInput = (req, res, next) => {
-  const { username, email, password } = req.body;
-
-  if (username && typeof username !== 'string') {
-    return res.status(400).json({ success: false, message: 'Invalid username' });
+    decoded = verifyAccessToken(token);
+  } catch {
+    throw new AppError(401, 'Session expired');
   }
 
-  if (email && !/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
-    return res.status(400).json({ success: false, message: 'Invalid email' });
+  if (decoded.type !== 'access') {
+    throw new AppError(401, 'Session expired');
   }
 
-  if (password && typeof password !== 'string') {
-    return res.status(400).json({ success: false, message: 'Invalid password' });
+  const user = await User.findById(decoded.sub).select('tokenVersion isEmailVerified');
+  const tokenVersion = Number(user?.tokenVersion || 0);
+  if (!user || !user.isEmailVerified || tokenVersion !== Number(decoded.ver)) {
+    throw new AppError(401, 'Session expired');
   }
 
+  req.userId = String(user._id);
+  req.tokenVersion = tokenVersion;
   next();
-};
+});

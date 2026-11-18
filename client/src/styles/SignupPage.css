@@ -1,2 +1,3 @@
-/* SignupPage uses the same LoginPage.css structure.
-   All shared auth styles are in LoginPage.css */
+@import './LoginPage.css';
+
+/* Signup uses the shared auth layout from LoginPage.css. */

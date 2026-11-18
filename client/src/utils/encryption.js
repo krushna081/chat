@@ -1,21 +1,19 @@
-// AES-256-GCM Encryption Utility
-export const generateEncryptionKey = async () => {
-  return await crypto.subtle.generateKey(
-    { name: 'AES-GCM', length: 256 },
-    true,
-    ['encrypt', 'decrypt']
-  );
-};
+const roomKeys = new Map();
+
+export const generateEncryptionKey = async () =>
+  crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
 
 export const encryptMessage = async (message, key) => {
-  const encoder = new TextEncoder();
-  const messageBuffer = encoder.encode(message);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
+  if (typeof message !== 'string' || !key) {
+    throw new Error('A message and encryption key are required');
+  }
 
+  const encoder = new TextEncoder();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
   const encryptedBuffer = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     key,
-    messageBuffer
+    encoder.encode(message)
   );
 
   return {
@@ -25,17 +23,17 @@ export const encryptMessage = async (message, key) => {
 };
 
 export const decryptMessage = async (encryptedData, iv, key) => {
-  const ivBuffer = hexToBuffer(iv);
-  const dataBuffer = hexToBuffer(encryptedData);
+  if (!encryptedData || !iv || !key) {
+    throw new Error('Encrypted message data and key are required');
+  }
 
   const decryptedBuffer = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: ivBuffer },
+    { name: 'AES-GCM', iv: hexToBuffer(iv) },
     key,
-    dataBuffer
+    hexToBuffer(encryptedData)
   );
 
-  const decoder = new TextDecoder();
-  return decoder.decode(decryptedBuffer);
+  return new TextDecoder().decode(decryptedBuffer);
 };
 
 export const exportKey = async (key) => {
@@ -44,53 +42,53 @@ export const exportKey = async (key) => {
 };
 
 export const importKey = async (hexKey) => {
-  const keyBuffer = hexToBuffer(hexKey);
-  return await crypto.subtle.importKey(
+  if (typeof hexKey !== 'string' || hexKey.length !== 64 || !/^[a-f0-9]+$/i.test(hexKey)) {
+    throw new Error('Invalid room key');
+  }
+
+  return crypto.subtle.importKey(
     'raw',
-    keyBuffer,
+    hexToBuffer(hexKey),
     { name: 'AES-GCM', length: 256 },
     true,
     ['encrypt', 'decrypt']
   );
 };
 
-const bufferToHex = (buffer) => {
-  return Array.from(buffer)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+export const storeEncryptionKey = (key, roomId) => {
+  if (!roomId || typeof key !== 'string' || !/^[a-f0-9]{64}$/i.test(key)) return;
+  roomKeys.set(roomId, key);
 };
 
-const hexToBuffer = (hexString) => {
+export const retrieveEncryptionKey = (roomId) => roomKeys.get(roomId) || null;
+
+export const getStoredKey = async (roomId) => {
+  const hexKey = retrieveEncryptionKey(roomId);
+  if (!hexKey) return null;
+  return importKey(hexKey);
+};
+
+export const clearStoredEncryptionKeys = () => {
+  roomKeys.clear();
+};
+
+export const bufferToHex = (buffer) =>
+  Array.from(buffer)
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+
+export const hexToBuffer = (hexString) => {
+  if (
+    typeof hexString !== 'string' ||
+    hexString.length % 2 !== 0 ||
+    !/^[a-f0-9]*$/i.test(hexString)
+  ) {
+    throw new Error('Invalid hexadecimal data');
+  }
+
   const bytes = new Uint8Array(hexString.length / 2);
-  for (let i = 0; i < hexString.length; i += 2) {
-    bytes[i / 2] = parseInt(hexString.substr(i, 2), 16);
+  for (let index = 0; index < hexString.length; index += 2) {
+    bytes[index / 2] = Number.parseInt(hexString.slice(index, index + 2), 16);
   }
   return bytes;
-};
-
-// Store encryption key securely in localStorage. Support per-room keys.
-export const storeEncryptionKey = (key, roomId = null) => {
-  const name = roomId ? `encryptionKey:${roomId}` : 'encryptionKey';
-  localStorage.setItem(name, key);
-};
-
-export const retrieveEncryptionKey = (roomId = null) => {
-  const name = roomId ? `encryptionKey:${roomId}` : 'encryptionKey';
-  return localStorage.getItem(name);
-};
-
-export const generateAndStoreKey = async (roomId = null) => {
-  const key = await generateEncryptionKey();
-  const exportedKey = await exportKey(key);
-  storeEncryptionKey(exportedKey, roomId);
-  return key;
-};
-
-// Get stored key for a specific room if provided, otherwise global key
-export const getStoredKey = async (roomId = null) => {
-  const hexKey = retrieveEncryptionKey(roomId);
-  if (!hexKey) {
-    return await generateAndStoreKey(roomId);
-  }
-  return await importKey(hexKey);
 };

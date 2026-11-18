@@ -1,140 +1,96 @@
 import axios from 'axios';
+import env from '../config/env.js';
+import { AppError } from '../middleware/errors.js';
 
-export const sendOTPEmail = async (email, otp) => {
+const sendEmail = async ({ to, subject, html }) => {
+  if (env.isTest) return { id: 'test-email' };
+
+  if (!env.resendApiKey) {
+    if (env.isProduction) {
+      throw new AppError(503, 'Email delivery is not configured');
+    }
+    console.info(
+      `[email:dev] ${subject} for ${to}: ${html.match(/>(\d{6})</)?.[1] || 'see template'}`
+    );
+    return { id: 'dev-email' };
+  }
+
+  const recipient =
+    !env.isProduction && process.env.RESEND_TEST_EMAIL ? process.env.RESEND_TEST_EMAIL : to;
+
   try {
-    const fromAddress = process.env.EMAIL_FROM || 'SecureChat <onboarding@krushna081.online>';
-    const recipient = (process.env.NODE_ENV !== 'production' && process.env.RESEND_TEST_EMAIL)
-      ? process.env.RESEND_TEST_EMAIL
-      : email;
-
-    const response = await axios.post('https://api.resend.com/emails', {
-      from: fromAddress,
-      to: recipient,
-      subject: 'Verify Your SecureChat Account',
-      html: generateOTPEmailTemplate(otp),
-    }, {
-      headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
+    const response = await axios.post(
+      'https://api.resend.com/emails',
+      {
+        from: env.emailFrom,
+        to: recipient,
+        subject,
+        html,
       },
-    });
-
+      {
+        headers: {
+          Authorization: `Bearer ${env.resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 10_000,
+      }
+    );
     return response.data;
   } catch (error) {
-    console.error('Email sending error:', error?.response?.data || error.message || error);
-    const resendMsg = error?.response?.data?.message;
-    throw new Error(resendMsg ? `Failed to send OTP email: ${resendMsg}` : 'Failed to send OTP email');
+    console.error(
+      `[email] Resend request failed with status ${error?.response?.status || 'unknown'}`
+    );
+    throw new AppError(502, 'Could not send email. Please try again.');
   }
 };
 
-const generateOTPEmailTemplate = (otp) => {
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; background: #1a1a1a; color: #fff; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #00ff88, #00d4ff); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; color: #000; }
-          .content { background: #2a2a2a; padding: 30px; border-radius: 0 0 10px 10px; }
-          .otp-box { background: #00ff88; color: #000; font-size: 32px; font-weight: bold; text-align: center; padding: 20px; border-radius: 8px; letter-spacing: 5px; margin: 20px 0; }
-          .warning { background: #ff4444; padding: 15px; border-radius: 5px; margin: 20px 0; font-size: 14px; }
-          .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #888; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>🔐 SecureChat Verification</h1>
-          </div>
-          <div class="content">
-            <p>Welcome to SecureChat!</p>
-            <p>Your One-Time Password (OTP) is:</p>
-            <div class="otp-box">${otp}</div>
-            <p>This OTP will expire in 5 minutes.</p>
-            <div class="warning">
-              ⚠️ Never share this code with anyone. SecureChat support will never ask for your OTP.
-            </div>
-            <p>If you didn't request this code, please ignore this email.</p>
-            <div class="footer">
-              <p>&copy; 2024 SecureChat. All rights reserved.</p>
-              <p>This is an automated message, please do not reply.</p>
-            </div>
-          </div>
+const template = ({ title, intro, otp, warning, footer }) => `
+  <!doctype html>
+  <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>${title}</title>
+      <style>
+        body { margin: 0; background: #f0f2f5; color: #111b21; font-family: Arial, sans-serif; }
+        .container { max-width: 560px; margin: 0 auto; padding: 24px; }
+        .header { background: #0f766e; color: #ffffff; padding: 24px; border-radius: 12px 12px 0 0; text-align: center; }
+        .content { background: #ffffff; padding: 28px; border-radius: 0 0 12px 12px; }
+        .otp { background: #ccfbf1; color: #0f766e; font-size: 32px; font-weight: 700; letter-spacing: 8px; text-align: center; padding: 18px; border-radius: 10px; margin: 20px 0; }
+        .warning { background: #fff7ed; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 20px 0; font-size: 14px; }
+        .footer { color: #667781; font-size: 12px; text-align: center; margin-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header"><h1>${title}</h1></div>
+        <div class="content">
+          <p>${intro}</p>
+          <div class="otp">${otp}</div>
+          <div class="warning">${warning}</div>
+          <p>This code expires in 5 minutes. If you did not request it, you can ignore this email.</p>
         </div>
-      </body>
-    </html>
-  `;
+        <div class="footer">${footer}</div>
+      </div>
+    </body>
+  </html>
+`;
+
+export const sendOtpEmail = async (email, otp, purpose = 'verification') => {
+  const isReset = purpose === 'password_reset';
+  return sendEmail({
+    to: email,
+    subject: isReset ? 'Reset your RelayChat password' : 'Verify your RelayChat account',
+    html: template({
+      title: isReset ? 'Reset your password' : 'Verify your email',
+      intro: isReset
+        ? 'Use this one-time code to choose a new password for your RelayChat account.'
+        : 'Welcome to RelayChat. Use this one-time code to verify your email address.',
+      otp,
+      warning: 'Never share this code. RelayChat support will never ask you for a one-time code.',
+      footer: `© ${new Date().getFullYear()} RelayChat. This is an automated message.`,
+    }),
+  });
 };
 
-export const sendPasswordResetEmail = async (email, resetToken) => {
-  try {
-    const fromAddress = process.env.EMAIL_FROM || 'SecureChat <onboarding@krushna081.online>';
-    const recipient = (process.env.NODE_ENV !== 'production' && process.env.RESEND_TEST_EMAIL)
-      ? process.env.RESEND_TEST_EMAIL
-      : email;
-
-    const CLIENT_URL = process.env.CLIENT_URL || 'https://chat-khaki-two-48.vercel.app';
-    const resetUrl = `${CLIENT_URL}/reset-password?token=${resetToken}`;
-
-    const response = await axios.post('https://api.resend.com/emails', {
-      from: fromAddress,
-      to: recipient,
-      subject: 'Reset Your SecureChat Password',
-      html: generatePasswordResetEmailTemplate(resetUrl),
-    }, {
-      headers: {
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error('Password reset email error:', error.response?.data || error.message);
-    throw new Error('Failed to send password reset email');
-  }
-};
-
-const generatePasswordResetEmailTemplate = (resetUrl) => {
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; background: #1a1a1a; color: #fff; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #ff6b6b, #feca57); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; color: #000; }
-          .content { background: #2a2a2a; padding: 30px; border-radius: 0 0 10px 10px; }
-          .button { display: inline-block; background: #00ff88; color: #000; padding: 15px 30px; text-decoration: none; font-weight: bold; border-radius: 8px; margin: 20px 0; }
-          .warning { background: #ff4444; padding: 15px; border-radius: 5px; margin: 20px 0; font-size: 14px; }
-          .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #888; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>🔑 Password Reset Request</h1>
-          </div>
-          <div class="content">
-            <p>We received a request to reset your SecureChat password.</p>
-            <p>Click the button below to create a new password:</p>
-            <div style="text-align: center;">
-              <a href="${resetUrl}" class="button">Reset Password</a>
-            </div>
-            <p>Or copy and paste this link in your browser:</p>
-            <p style="word-break: break-all; color: #00d4ff;">${resetUrl}</p>
-            <div class="warning">
-              ⚠️ This link will expire in 15 minutes. If you didn't request this, please ignore this email.
-            </div>
-            <p>If you didn't request a password reset, your account may be compromised. Please change your password immediately.</p>
-            <div class="footer">
-              <p>&copy; 2024 SecureChat. All rights reserved.</p>
-              <p>This is an automated message, please do not reply.</p>
-            </div>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
-};
+export const sendPasswordResetEmail = (email, otp) => sendOtpEmail(email, otp, 'password_reset');

@@ -12,7 +12,7 @@
 }
 
 html.light .dashboard-layout,
-html.white .dashboard-layout {
+html.light .dashboard-layout {
   background: #f0f2f5;
 }
 
@@ -40,7 +40,7 @@ html.black .dashboard-layout {
 }
 
 html.light .dashboard-nav,
-html.white .dashboard-nav {
+html.light .dashboard-nav {
   background: #ffffff;
   border-bottom-color: rgba(0, 0, 0, 0.06);
 }
@@ -72,7 +72,7 @@ html.black .dashboard-nav {
 }
 
 html.light .brand-text,
-html.white .brand-text {
+html.light .brand-text {
   color: #111b21;
 }
 
@@ -105,12 +105,12 @@ html.blue .brand-text {
 }
 
 html.light .nav-btn,
-html.white .nav-btn {
+html.light .nav-btn {
   color: #54656f;
 }
 
 html.light .nav-btn:hover,
-html.white .nav-btn:hover {
+html.light .nav-btn:hover {
   background-color: rgba(0, 0, 0, 0.04);
 }
 
@@ -135,7 +135,7 @@ html.black .nav-btn:hover {
 }
 
 html.light .logout-btn:hover,
-html.white .logout-btn:hover {
+html.light .logout-btn:hover {
   background-color: rgba(255, 59, 48, 0.08);
 }
 
@@ -200,12 +200,12 @@ html.black .logout-btn:hover {
 }
 
 html.light .new-chat-btn,
-html.white .new-chat-btn {
+html.light .new-chat-btn {
   color: #54656f;
 }
 
 html.light .new-chat-btn:hover,
-html.white .new-chat-btn:hover {
+html.light .new-chat-btn:hover {
   background-color: rgba(0, 0, 0, 0.04);
 }
 
@@ -237,7 +237,7 @@ html.black .new-chat-btn:hover {
 }
 
 html.light .create-room-panel,
-html.white .create-room-panel {
+html.light .create-room-panel {
   background: rgba(0, 0, 0, 0.02);
   border-color: rgba(0, 0, 0, 0.06);
 }
@@ -259,7 +259,7 @@ html.black .create-room-panel {
 }
 
 html.light .create-room-title,
-html.white .create-room-title {
+html.light .create-room-title {
   color: #111b21;
 }
 
@@ -312,12 +312,12 @@ html.black .create-room-title {
 }
 
 html.light .room-card,
-html.white .room-card {
+html.light .room-card {
   border-bottom-color: rgba(0, 0, 0, 0.04);
 }
 
 html.light .room-card:hover,
-html.white .room-card:hover {
+html.light .room-card:hover {
   background-color: rgba(0, 0, 0, 0.02);
 }
 
@@ -353,7 +353,7 @@ html.black .room-card:hover {
 }
 
 html.light .room-avatar,
-html.white .room-avatar {
+html.light .room-avatar {
   background: linear-gradient(135deg, #128c7e, #075e54);
   color: #ffffff;
 }
@@ -392,7 +392,7 @@ html.black .room-avatar {
 }
 
 html.light .room-name,
-html.white .room-name {
+html.light .room-name {
   color: #111b21;
 }
 
@@ -414,7 +414,7 @@ html.black .room-name {
 }
 
 html.light .room-meta,
-html.white .room-meta {
+html.light .room-meta {
   color: #667781;
 }
 
@@ -439,7 +439,7 @@ html.black .room-meta {
 }
 
 html.light .room-id,
-html.white .room-id {
+html.light .room-id {
   color: #667781;
 }
 
@@ -460,7 +460,7 @@ html.black .room-id {
 }
 
 html.light .room-participants,
-html.white .room-participants {
+html.light .room-participants {
   color: #667781;
 }
 
@@ -485,7 +485,7 @@ html.black .room-participants {
 }
 
 html.light .room-badge,
-html.white .room-badge {
+html.light .room-badge {
   color: #856404;
   background: rgba(255, 193, 7, 0.12);
 }
@@ -507,7 +507,7 @@ html.black .room-badge {
 }
 
 html.light .room-arrow,
-html.white .room-arrow {
+html.light .room-arrow {
   color: rgba(0, 0, 0, 0.15);
 }
 
@@ -546,7 +546,7 @@ html.black .room-arrow {
 }
 
 html.light .empty-title,
-html.white .empty-title {
+html.light .empty-title {
   color: #111b21;
 }
 
@@ -564,7 +564,7 @@ html.black .empty-title {
 }
 
 html.light .empty-desc,
-html.white .empty-desc {
+html.light .empty-desc {
   color: #667781;
 }
 
@@ -637,13 +637,13 @@ html.black .empty-desc {
 }
 
 html.light .room-picture-upload,
-html.white .room-picture-upload {
+html.light .room-picture-upload {
   border-color: rgba(0, 0, 0, 0.15);
 }
 
 html.light .room-picture-upload:hover,
-html.white .room-picture-upload:hover {
-  border-color: #128c7e;
+html.light .room-picture-upload:hover {
+  border-color: #0f766e;
 }
 
 html.blue .room-picture-upload {
@@ -673,7 +673,7 @@ html.blue .room-picture-upload:hover {
 }
 
 html.light .room-picture-placeholder,
-html.white .room-picture-placeholder {
+html.light .room-picture-placeholder {
   color: #667781;
 }
 

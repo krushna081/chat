@@ -1,9 +1,30 @@
-# Ignore Node.js dependencies
+# Dependencies
 node_modules/
+**/node_modules/
 
-# Optional OS / editor
-.DS_Store
-Thumbs.db
+# Build output
+dist/
+**/dist/
+coverage/
+**/coverage/
 
 # Environment files
 .env
+.env.*
+!.env.example
+!**/.env.example
+
+# Logs and caches
+*.log
+npm-debug.log*
+.npm/
+.eslintcache
+.vite/
+**/.vite/
+*.tsbuildinfo
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

@@ -1,391 +1,372 @@
+import bcryptjs from 'bcryptjs';
 import User from '../models/User.js';
 import OTP from '../models/OTP.js';
+import { AppError, asyncHandler } from '../middleware/errors.js';
 import {
+  clearAuthCookies,
   generateOTP,
+  getRefreshTokenFromRequest,
   hashOTP,
+  setAuthCookies,
   verifyOTP,
-  generateTokens,
   verifyRefreshToken,
-  validatePassword,
 } from '../utils/auth.js';
-import { sendOTPEmail, sendPasswordResetEmail } from '../utils/sendEmail.js';
+import {
+  PASSWORD_REQUIREMENTS,
+  isValidEmail,
+  isValidPassword,
+  isValidUsername,
+  normalizeEmail,
+  normalizeUsername,
+} from '../utils/validation.js';
+import { sendOtpEmail } from '../utils/sendEmail.js';
 
-export const signup = async (req, res) => {
-  try {
-    const { username, email, password } = req.body;
+const OTP_TTL_MS = 5 * 60 * 1000;
+const MAX_OTP_ATTEMPTS = 5;
+const DUMMY_HASH_PROMISE = bcryptjs.hash('relaychat-dummy-password', 12);
 
-    // Validation
-    if (!username || !email || !password) {
-      return res.status(400).json({ success: false, message: 'All fields are required' });
-    }
+// Existing accounts may predate email normalization; match them case-insensitively.
+const EMAIL_COLLATION = { locale: 'en', strength: 2 };
+const findUserByEmail = (email, select) => {
+  const query = User.findOne({ email }).collation(EMAIL_COLLATION);
+  return select ? query.select(select) : query;
+};
 
-    if (!validatePassword(password)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must contain uppercase, lowercase, number, and special character',
-      });
-    }
+const genericCodeResponse = {
+  success: true,
+  message: 'If the details are available, a verification code has been sent',
+};
 
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
-    if (existingUser) {
-      return res.status(400).json({ success: false, message: 'User already exists' });
-    }
+const disconnectUserSockets = async (req, userId) => {
+  const io = req.app.get('io');
+  if (!io) return;
+  const sockets = await io.fetchSockets();
+  sockets
+    .filter((socket) => String(socket.userId) === String(userId))
+    .forEach((socket) => socket.disconnect(true));
+};
 
-    // Generate OTP
-    const otp = generateOTP();
-    const hashedOtp = await hashOTP(otp);
-
-    // Save OTP
-    await OTP.findOneAndUpdate(
-      { email },
-      {
-        email,
+const saveOtp = async (email, type) => {
+  const otp = generateOTP();
+  const hashedOtp = await hashOTP(otp);
+  await OTP.findOneAndUpdate(
+    { email, type },
+    {
+      $set: {
         hashedOtp,
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+        expiresAt: new Date(Date.now() + OTP_TTL_MS),
         attempts: 0,
+        maxAttempts: MAX_OTP_ATTEMPTS,
       },
-      { upsert: true }
-    );
-
-    // Send OTP email
-    await sendOTPEmail(email, otp);
-
-    // Store signup data temporarily (in real app, use session or cache)
-    res.status(200).json({
-      success: true,
-      message: 'OTP sent to email',
-      tempData: { username, email, password },
-    });
-  } catch (error) {
-    console.error('Signup error:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
+      $setOnInsert: { email, type },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+  return otp;
 };
 
-export const verifyOtpAndCreateUser = async (req, res) => {
-  try {
-    const { email, otp, username, password } = req.body;
+export const signup = asyncHandler(async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const username = normalizeUsername(req.body?.username);
+  const password = req.body?.password;
 
-    if (!email || !otp || !username || !password) {
-      return res.status(400).json({ success: false, message: 'All fields are required' });
-    }
-
-    // Find OTP record
-    const otpRecord = await OTP.findOne({ email });
-    if (!otpRecord) {
-      return res.status(400).json({ success: false, message: 'OTP expired or not found' });
-    }
-
-    if (otpRecord.attempts >= otpRecord.maxAttempts) {
-      return res.status(400).json({ success: false, message: 'Maximum attempts exceeded' });
-    }
-
-    // Verify OTP
-    const isOtpValid = await verifyOTP(otp, otpRecord.hashedOtp);
-    if (!isOtpValid) {
-      otpRecord.attempts += 1;
-      await otpRecord.save();
-      return res.status(400).json({ success: false, message: 'Invalid OTP' });
-    }
-
-    // Create user
-    const newUser = new User({
-      username,
-      email,
-      password,
-      isEmailVerified: true,
-    });
-
-    await newUser.save();
-
-    // Delete OTP record
-    await OTP.deleteOne({ email });
-
-    // Generate tokens
-    const { accessToken, refreshToken } = generateTokens(newUser._id);
-
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000,
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'User created successfully',
-      user: newUser.toJSON(),
-      accessToken,
-      refreshToken,
-    });
-  } catch (error) {
-    console.error('OTP verification error:', error);
-    res.status(500).json({ success: false, message: error.message });
+  if (!isValidEmail(email) || !isValidUsername(username)) {
+    throw new AppError(400, 'Enter a valid username and email address');
   }
-};
-
-export const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email and password are required' });
-    }
-
-    const user = await User.findOne({ email }).select('+password');
-    if (!user) {
-      return res.status(400).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    if (!user.isEmailVerified) {
-      return res.status(400).json({ success: false, message: 'Email not verified' });
-    }
-
-    const isPasswordCorrect = await user.comparePassword(password);
-    if (!isPasswordCorrect) {
-      return res.status(400).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    const { accessToken, refreshToken } = generateTokens(user._id);
-
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000,
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    res.status(200).json({
-      success: true,
-      message: 'Login successful',
-      user: user.toJSON(),
-      accessToken,
-      refreshToken,
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ success: false, message: error.message });
+  if (!isValidPassword(password)) {
+    throw new AppError(400, PASSWORD_REQUIREMENTS);
   }
-};
 
-export const refreshAccessToken = async (req, res) => {
+  const [existingEmail, existingUsername] = await Promise.all([
+    findUserByEmail(email, '_id').lean(),
+    User.findOne({ username }).select('_id').lean(),
+  ]);
+  if (existingEmail || existingUsername) {
+    // Do not reveal whether an account or username already exists.
+    return res.status(200).json(genericCodeResponse);
+  }
+
+  const otp = await saveOtp(email, 'verification');
   try {
-    const refreshToken = req.cookies.refreshToken;
+    await sendOtpEmail(email, otp, 'verification');
+  } catch (error) {
+    // Keep the response generic so email delivery failures cannot enumerate accounts.
+    console.error(`[auth] Verification email failed: ${error.message}`);
+  }
+  return res.status(200).json(genericCodeResponse);
+});
 
-    if (!refreshToken) {
-      return res.status(401).json({ success: false, message: 'No refresh token' });
-    }
+export const verifyOtpAndCreateUser = asyncHandler(async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const username = normalizeUsername(req.body?.username);
+  const otp = String(req.body?.otp || '').trim();
+  const password = req.body?.password;
 
+  if (!isValidEmail(email) || !isValidUsername(username)) {
+    throw new AppError(400, 'Enter a valid username and email address');
+  }
+  if (!/^\d{6}$/.test(otp)) {
+    throw new AppError(400, 'Enter the 6-digit verification code');
+  }
+  if (!isValidPassword(password)) {
+    throw new AppError(400, PASSWORD_REQUIREMENTS);
+  }
+
+  const otpRecord = await OTP.findOne({ email, type: 'verification' }).select('+hashedOtp');
+  if (!otpRecord || !otpRecord.expiresAt || otpRecord.expiresAt.getTime() <= Date.now()) {
+    if (otpRecord) await OTP.deleteOne({ _id: otpRecord._id });
+    throw new AppError(400, 'Verification code expired or not found');
+  }
+  const maxAttempts = Number(otpRecord.maxAttempts || 5);
+  if (Number(otpRecord.attempts || 0) >= maxAttempts) {
+    throw new AppError(429, 'Too many incorrect attempts. Request a new code.');
+  }
+
+  // Claim an attempt atomically so concurrent guesses cannot exceed maxAttempts.
+  const claimed = await OTP.findOneAndUpdate(
+    {
+      _id: otpRecord._id,
+      expiresAt: { $gt: new Date() },
+      $or: [{ attempts: { $lt: maxAttempts } }, { attempts: { $exists: false } }],
+    },
+    { $inc: { attempts: 1 } }
+  );
+  if (!claimed) {
+    throw new AppError(400, 'Verification code expired or not found');
+  }
+
+  const otpIsValid = await verifyOTP(otp, otpRecord.hashedOtp);
+  if (!otpIsValid) {
+    throw new AppError(400, 'Invalid verification code');
+  }
+
+  const [existingEmail, existingUsername] = await Promise.all([
+    findUserByEmail(email, '_id').lean(),
+    User.findOne({ username }).select('_id').lean(),
+  ]);
+  if (existingEmail || existingUsername) {
+    await OTP.deleteOne({ _id: otpRecord._id });
+    throw new AppError(409, 'An account with those details already exists');
+  }
+
+  const user = await User.create({
+    username,
+    email,
+    password,
+    isEmailVerified: true,
+  });
+
+  await OTP.deleteOne({ _id: otpRecord._id });
+  setAuthCookies(res, user);
+
+  return res.status(201).json({
+    success: true,
+    message: 'Account created',
+    user: user.toJSON(),
+  });
+});
+
+export const login = asyncHandler(async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const password = req.body?.password;
+
+  if (
+    !isValidEmail(email) ||
+    typeof password !== 'string' ||
+    password.length === 0 ||
+    Buffer.byteLength(password, 'utf8') > 72
+  ) {
+    throw new AppError(400, 'Email and password are required');
+  }
+
+  const user = await findUserByEmail(email, '+password +failedLoginAttempts +lockUntil');
+
+  if (!user) {
+    const dummyHash = await DUMMY_HASH_PROMISE;
+    await bcryptjs.compare(password, dummyHash);
+    throw new AppError(401, 'Invalid email or password');
+  }
+
+  const passwordIsCorrect = await user.comparePassword(password);
+
+  if (user.isLocked()) {
+    throw new AppError(429, 'Too many failed attempts. Try again later.');
+  }
+
+  if (!passwordIsCorrect) {
+    await user.registerFailedLogin();
+    throw new AppError(401, 'Invalid email or password');
+  }
+
+  if (!user.isEmailVerified) {
+    throw new AppError(403, 'Verify your email before signing in');
+  }
+
+  await user.resetLoginFailures();
+  setAuthCookies(res, user);
+
+  return res.status(200).json({
+    success: true,
+    message: 'Signed in',
+    user: user.toJSON(),
+  });
+});
+
+export const refreshAccessToken = asyncHandler(async (req, res) => {
+  const refreshToken = getRefreshTokenFromRequest(req);
+  if (!refreshToken) {
+    throw new AppError(401, 'Session expired');
+  }
+
+  const decoded = verifyRefreshToken(refreshToken);
+  if (!decoded) {
+    clearAuthCookies(res);
+    throw new AppError(401, 'Session expired');
+  }
+
+  const user = await User.findById(decoded.sub);
+  if (!user || !user.isEmailVerified || Number(user.tokenVersion || 0) !== Number(decoded.ver)) {
+    clearAuthCookies(res);
+    throw new AppError(401, 'Session expired');
+  }
+
+  setAuthCookies(res, user);
+  return res.status(200).json({
+    success: true,
+    message: 'Session refreshed',
+    user: user.toJSON(),
+  });
+});
+
+export const logout = asyncHandler(async (req, res) => {
+  const refreshToken = getRefreshTokenFromRequest(req);
+  let userId = null;
+  if (refreshToken) {
     const decoded = verifyRefreshToken(refreshToken);
-    if (!decoded) {
-      return res.status(401).json({ success: false, message: 'Invalid refresh token' });
+    if (decoded) {
+      userId = decoded.sub;
+      await User.updateOne(
+        {
+          _id: decoded.sub,
+          $or: [{ tokenVersion: decoded.ver }, { tokenVersion: { $exists: false } }],
+        },
+        { $inc: { tokenVersion: 1 } }
+      );
     }
-
-    const { accessToken: newAccessToken } = generateTokens(decoded.id);
-
-    res.cookie('accessToken', newAccessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000,
-    });
-
-    res.status(200).json({ success: true, message: 'Token refreshed' });
-  } catch (error) {
-    console.error('Token refresh error:', error);
-    res.status(500).json({ success: false, message: error.message });
   }
-};
 
-export const logout = (req, res) => {
-  res.clearCookie('accessToken');
-  res.clearCookie('refreshToken');
-  res.status(200).json({ success: true, message: 'Logged out successfully' });
-};
+  if (userId) {
+    await disconnectUserSockets(req, userId).catch(() => {});
+  }
 
-export const resendOtp = async (req, res) => {
+  clearAuthCookies(res);
+  return res.status(200).json({ success: true, message: 'Signed out' });
+});
+
+export const resendOtp = asyncHandler(async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  if (!isValidEmail(email)) {
+    return res.status(200).json(genericCodeResponse);
+  }
+
+  const existingUser = await findUserByEmail(email, 'isEmailVerified').lean();
+  if (existingUser?.isEmailVerified) {
+    return res.status(200).json(genericCodeResponse);
+  }
+
+  const otp = await saveOtp(email, 'verification');
   try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ success: false, message: 'Email is required' });
-    }
-
-    const otp = generateOTP();
-    const hashedOtp = await hashOTP(otp);
-
-    await OTP.findOneAndUpdate(
-      { email },
-      {
-        hashedOtp,
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-        attempts: 0,
-      },
-      { upsert: true }
-    );
-
-    await sendOTPEmail(email, otp);
-
-    res.status(200).json({ success: true, message: 'OTP resent' });
+    await sendOtpEmail(email, otp, 'verification');
   } catch (error) {
-    console.error('Resend OTP error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    // Keep the response generic so email delivery failures cannot enumerate accounts.
+    console.error(`[auth] Verification email failed: ${error.message}`);
   }
-};
+  return res.status(200).json(genericCodeResponse);
+});
 
-// OTP-based Password Reset - Step 1: Request OTP
-export const forgotPasswordRequest = async (req, res) => {
+export const forgotPasswordRequest = asyncHandler(async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const genericResponse = {
+    success: true,
+    message: 'If an account exists, a password reset code has been sent',
+  };
+
+  if (!isValidEmail(email)) {
+    return res.status(200).json(genericResponse);
+  }
+
+  const user = await findUserByEmail(email, '_id').lean();
+  if (!user) {
+    return res.status(200).json(genericResponse);
+  }
+
   try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ success: false, message: 'Email is required' });
-    }
-
-    const user = await User.findOne({ email });
-    
-    if (!user) {
-      return res.status(200).json({ 
-        success: true, 
-        message: 'If an account exists, an OTP will be sent' 
-      });
-    }
-
-    const otp = generateOTP();
-    const hashedOtp = await hashOTP(otp);
-
-    await OTP.findOneAndUpdate(
-      { email, type: 'password_reset' },
-      {
-        email,
-        hashedOtp,
-        type: 'password_reset',
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-        attempts: 0,
-      },
-      { upsert: true }
-    );
-
-    await sendOTPEmail(email, otp);
-
-    res.status(200).json({ 
-      success: true, 
-      message: 'If an account exists, an OTP will be sent',
-      email: email.replace(/(.{2})(.*)(@.*)/, '$1***$3'),
-    });
+    const otp = await saveOtp(email, 'password_reset');
+    await sendOtpEmail(email, otp, 'password_reset');
   } catch (error) {
-    console.error('Forgot password request error:', error);
-    res.status(500).json({ success: false, message: 'Failed to send OTP' });
+    console.error(`[auth] Password reset email failed: ${error.message}`);
   }
-};
 
-// OTP-based Password Reset - Step 2: Verify OTP
-export const verifyResetOtp = async (req, res) => {
-  try {
-    const { email, otp, newPassword } = req.body;
+  return res.status(200).json(genericResponse);
+});
 
-    console.log('verifyResetOtp called:', { email, otpProvided: !!otp, newPasswordProvided: !!newPassword });
+export const verifyResetOtp = asyncHandler(async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const otp = String(req.body?.otp || '').trim();
+  const newPassword = req.body?.newPassword;
 
-    if (!email || !otp || !newPassword) {
-      return res.status(400).json({ success: false, message: 'Email, OTP, and new password are required' });
-    }
-
-    const passwordValid = validatePassword(newPassword);
-    console.log('Password validation:', passwordValid, 'for:', newPassword);
-    
-    if (!passwordValid) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must contain uppercase, lowercase, number, and special character',
-      });
-    }
-
-    const otpRecord = await OTP.findOne({ email, type: 'password_reset' });
-    console.log('OTP record found:', !!otpRecord);
-    
-    if (!otpRecord) {
-      return res.status(400).json({ success: false, message: 'OTP expired or not found. Please request a new OTP.' });
-    }
-
-    if (otpRecord.attempts >= 5) {
-      return res.status(400).json({ success: false, message: 'Maximum attempts exceeded. Please request a new OTP.' });
-    }
-
-    const isOtpValid = await verifyOTP(otp, otpRecord.hashedOtp);
-    console.log('OTP validation result:', isOtpValid);
-    
-    if (!isOtpValid) {
-      otpRecord.attempts += 1;
-      await otpRecord.save();
-      return res.status(400).json({ success: false, message: 'Invalid OTP. Please check and try again.' });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ success: false, message: 'User not found' });
-    }
-
-    user.password = newPassword;
-    await user.save();
-    console.log('Password updated for user:', email);
-
-    await OTP.deleteOne({ email, type: 'password_reset' });
-
-    res.status(200).json({ success: true, message: 'Password reset successful' });
-  } catch (error) {
-    console.error('Verify reset OTP error:', error);
-    res.status(500).json({ success: false, message: error.message });
+  if (!isValidEmail(email) || !/^\d{6}$/.test(otp)) {
+    throw new AppError(400, 'Enter a valid email and 6-digit code');
   }
-};
-
-export const resetPassword = async (req, res) => {
-  try {
-    const { token, newPassword } = req.body;
-
-    if (!token || !newPassword) {
-      return res.status(400).json({ success: false, message: 'Token and new password are required' });
-    }
-
-    if (!validatePassword(newPassword)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must contain uppercase, lowercase, number, and special character',
-      });
-    }
-
-    let decoded;
-    try {
-      const jwt = await import('jsonwebtoken');
-      decoded = jwt.default.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    } catch (e) {
-      return res.status(400).json({ success: false, message: 'Invalid or expired token' });
-    }
-
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(400).json({ success: false, message: 'User not found' });
-    }
-
-    user.password = newPassword;
-    await user.save();
-
-    res.status(200).json({ success: true, message: 'Password reset successful' });
-  } catch (error) {
-    console.error('Reset password error:', error);
-    res.status(500).json({ success: false, message: error.message });
+  if (!isValidPassword(newPassword)) {
+    throw new AppError(400, PASSWORD_REQUIREMENTS);
   }
-};
+
+  const otpRecord = await OTP.findOne({ email, type: 'password_reset' }).select('+hashedOtp');
+  if (!otpRecord || !otpRecord.expiresAt || otpRecord.expiresAt.getTime() <= Date.now()) {
+    if (otpRecord) await OTP.deleteOne({ _id: otpRecord._id });
+    throw new AppError(400, 'Reset code expired or not found');
+  }
+  const maxAttempts = Number(otpRecord.maxAttempts || 5);
+  if (Number(otpRecord.attempts || 0) >= maxAttempts) {
+    throw new AppError(429, 'Too many incorrect attempts. Request a new code.');
+  }
+
+  // Claim an attempt atomically so concurrent guesses cannot exceed maxAttempts.
+  const claimed = await OTP.findOneAndUpdate(
+    {
+      _id: otpRecord._id,
+      expiresAt: { $gt: new Date() },
+      $or: [{ attempts: { $lt: maxAttempts } }, { attempts: { $exists: false } }],
+    },
+    { $inc: { attempts: 1 } }
+  );
+  if (!claimed) {
+    throw new AppError(400, 'Reset code expired or not found');
+  }
+
+  const otpIsValid = await verifyOTP(otp, otpRecord.hashedOtp);
+  if (!otpIsValid) {
+    throw new AppError(400, 'Invalid reset code');
+  }
+
+  const user = await findUserByEmail(email, '+failedLoginAttempts +lockUntil');
+  if (!user) {
+    await OTP.deleteOne({ _id: otpRecord._id });
+    throw new AppError(400, 'Unable to reset this account');
+  }
+
+  user.password = newPassword;
+  user.tokenVersion = Number(user.tokenVersion || 0) + 1;
+  user.failedLoginAttempts = 0;
+  user.lockUntil = null;
+  await user.save();
+  await OTP.deleteOne({ _id: otpRecord._id });
+  await disconnectUserSockets(req, user._id).catch(() => {});
+  clearAuthCookies(res);
+
+  return res.status(200).json({
+    success: true,
+    message: 'Password reset. Sign in with your new password.',
+  });
+});

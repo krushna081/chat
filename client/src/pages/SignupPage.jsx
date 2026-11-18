@@ -3,7 +3,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/context/store';
 import toast from 'react-hot-toast';
-import { User, Mail, Lock, Eye, EyeOff, CheckCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Eye, EyeOff, Loader2, Lock, Mail, MessageCircle, User } from 'lucide-react';
+import {
+  PASSWORD_REQUIREMENTS,
+  isStrongPassword,
+  isValidEmail,
+  isValidUsername,
+} from '@/utils/validation';
 import '@/styles/SignupPage.css';
 
 export default function SignupPage() {
@@ -15,97 +21,68 @@ export default function SignupPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { signup, resetLoading } = useAuthStore();
+  const signup = useAuthStore((state) => state.signup);
+  const resetLoading = useAuthStore((state) => state.resetLoading);
   const navigate = useNavigate();
 
-  // Reset loading state on mount/unmount
-  useEffect(() => {
-    return () => {
-      resetLoading();
-    };
-  }, [resetLoading]);
+  useEffect(() => () => resetLoading(), [resetLoading]);
 
-  const validatePassword = (pwd) => {
-    const strength = {
-      hasUpperCase: /[A-Z]/.test(pwd),
-      hasLowerCase: /[a-z]/.test(pwd),
-      hasNumber: /\d/.test(pwd),
-      hasSpecialChar: /[@$!%*?&]/.test(pwd),
-      isLongEnough: pwd.length >= 8,
-    };
+  const requirements = useMemo(
+    () => [
+      { label: 'At least 8 characters', met: formData.password.length >= 8 },
+      { label: 'Uppercase letter', met: /[A-Z]/.test(formData.password) },
+      { label: 'Lowercase letter', met: /[a-z]/.test(formData.password) },
+      { label: 'Number', met: /\d/.test(formData.password) },
+      { label: 'Symbol', met: /[^A-Za-z0-9]/.test(formData.password) },
+    ],
+    [formData.password]
+  );
 
-    const score = Object.values(strength).filter(Boolean).length;
-    setPasswordStrength(score);
-    return score === 5;
+  const isFormValid = useMemo(
+    () =>
+      isValidUsername(formData.username) &&
+      isValidEmail(formData.email) &&
+      isStrongPassword(formData.password) &&
+      formData.password === formData.confirmPassword,
+    [formData]
+  );
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((previous) => ({ ...previous, [name]: value }));
   };
 
-  // Reset submitting state when user types
-  useEffect(() => {
-    if (isSubmitting) {
-      setIsSubmitting(false);
-    }
-  }, [formData.username, formData.email, formData.password, formData.confirmPassword]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    if (name === 'password') {
-      validatePassword(value);
-    }
-  };
-
-  // Check if form is valid
-  const isFormValid = useMemo(() => {
-    const usernameValid = formData.username.trim().length >= 3;
-    const emailValid = formData.email.trim().includes('@');
-    const passwordValid = formData.password.length >= 8;
-    const confirmValid = formData.confirmPassword === formData.password && formData.confirmPassword.length > 0;
-    return usernameValid && emailValid && passwordValid && confirmValid;
-  }, [formData]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     if (!isFormValid || isSubmitting) return;
 
+    if (!isStrongPassword(formData.password)) {
+      toast.error(PASSWORD_REQUIREMENTS);
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
     }
 
-    if (!validatePassword(formData.password)) {
-      toast.error('Password does not meet security requirements');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      await signup(formData.username, formData.email, formData.password);
-      toast.success('Signup successful! Check your email for OTP');
+      await signup(formData.username.trim(), formData.email.trim(), formData.password);
+      toast.success('Check your email for a verification code');
       navigate('/verify-otp', {
-        state: { email: formData.email, username: formData.username, password: formData.password },
+        state: { email: formData.email.trim(), username: formData.username.trim() },
       });
     } catch (error) {
-      toast.error(error.message || 'Signup failed');
+      toast.error(error.message || 'Sign up failed');
       setIsSubmitting(false);
     }
   };
 
-  const requirements = [
-    { label: 'At least 8 characters', met: formData.password.length >= 8 },
-    { label: 'Uppercase letter', met: /[A-Z]/.test(formData.password) },
-    { label: 'Lowercase letter', met: /[a-z]/.test(formData.password) },
-    { label: 'Number', met: /\d/.test(formData.password) },
-    { label: 'Special character', met: /[@$!%*?&]/.test(formData.password) },
-  ];
-
   return (
     <div className="auth-page">
-      <div className="auth-bg-pattern" />
+      <div className="auth-bg-pattern" aria-hidden="true" />
       <div className="auth-container">
         <motion.div
           className="auth-card"
@@ -114,17 +91,22 @@ export default function SignupPage() {
           transition={{ duration: 0.3 }}
         >
           <div className="auth-header">
-            <div className="auth-logo">🔒</div>
+            <Link to="/" className="auth-logo" aria-label="RelayChat home">
+              <MessageCircle size={26} />
+            </Link>
             <h1 className="auth-title">Create account</h1>
-            <p className="auth-subtitle">Join SecureChat for encrypted messaging</p>
+            <p className="auth-subtitle">Join RelayChat and start a conversation.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
-              <label className="form-label">Username</label>
+              <label className="form-label" htmlFor="signup-username">
+                Username
+              </label>
               <div className="input-wrapper">
-                <User size={18} className="input-icon" />
+                <User size={18} className="input-icon" aria-hidden="true" />
                 <input
+                  id="signup-username"
                   type="text"
                   name="username"
                   value={formData.username}
@@ -133,15 +115,20 @@ export default function SignupPage() {
                   className="input-primary"
                   autoComplete="username"
                   minLength={3}
+                  maxLength={24}
+                  required
                 />
               </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Email</label>
+              <label className="form-label" htmlFor="signup-email">
+                Email
+              </label>
               <div className="input-wrapper">
-                <Mail size={18} className="input-icon" />
+                <Mail size={18} className="input-icon" aria-hidden="true" />
                 <input
+                  id="signup-email"
                   type="email"
                   name="email"
                   value={formData.email}
@@ -149,15 +136,19 @@ export default function SignupPage() {
                   placeholder="you@example.com"
                   className="input-primary"
                   autoComplete="email"
+                  required
                 />
               </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Password</label>
+              <label className="form-label" htmlFor="signup-password">
+                Password
+              </label>
               <div className="input-wrapper">
-                <Lock size={18} className="input-icon" />
+                <Lock size={18} className="input-icon" aria-hidden="true" />
                 <input
+                  id="signup-password"
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={formData.password}
@@ -165,11 +156,13 @@ export default function SignupPage() {
                   placeholder="Create a password"
                   className="input-primary"
                   autoComplete="new-password"
+                  required
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => setShowPassword((visible) => !visible)}
                   className="input-suffix"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -177,10 +170,13 @@ export default function SignupPage() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Confirm Password</label>
+              <label className="form-label" htmlFor="signup-confirm-password">
+                Confirm password
+              </label>
               <div className="input-wrapper">
-                <Lock size={18} className="input-icon" />
+                <Lock size={18} className="input-icon" aria-hidden="true" />
                 <input
+                  id="signup-confirm-password"
                   type={showConfirm ? 'text' : 'password'}
                   name="confirmPassword"
                   value={formData.confirmPassword}
@@ -188,11 +184,13 @@ export default function SignupPage() {
                   placeholder="Confirm your password"
                   className="input-primary"
                   autoComplete="new-password"
+                  required
                 />
                 <button
                   type="button"
-                  onClick={() => setShowConfirm(!showConfirm)}
+                  onClick={() => setShowConfirm((visible) => !visible)}
                   className="input-suffix"
+                  aria-label={showConfirm ? 'Hide password' : 'Show password'}
                 >
                   {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -200,14 +198,14 @@ export default function SignupPage() {
             </div>
 
             {formData.password.length > 0 && (
-              <div className="password-requirements">
-                {requirements.map((req, idx) => (
+              <div className="password-requirements" aria-live="polite">
+                {requirements.map((requirement) => (
                   <div
-                    key={idx}
-                    className={`requirement ${req.met ? 'met' : ''}`}
+                    key={requirement.label}
+                    className={`requirement ${requirement.met ? 'met' : ''}`}
                   >
-                    <CheckCircle size={14} />
-                    <span>{req.label}</span>
+                    <CheckCircle size={14} aria-hidden="true" />
+                    <span>{requirement.label}</span>
                   </div>
                 ))}
               </div>
@@ -222,16 +220,20 @@ export default function SignupPage() {
             >
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="animate-spin" size={18} /> Creating account...
+                  <Loader2 className="animate-spin" size={18} /> Creating account…
                 </span>
-              ) : 'Create Account'}
+              ) : (
+                'Create account'
+              )}
             </motion.button>
           </form>
 
           <div className="auth-footer">
             <p className="footer-text">
               Already have an account?{' '}
-              <Link to="/login" className="footer-link">Sign in</Link>
+              <Link to="/login" className="footer-link">
+                Sign in
+              </Link>
             </p>
           </div>
         </motion.div>

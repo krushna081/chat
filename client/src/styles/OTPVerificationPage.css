@@ -12,7 +12,7 @@
 }
 
 html.light .otp-page,
-html.white .otp-page {
+html.light .otp-page {
   background: #f0f2f5;
 }
 
@@ -45,7 +45,7 @@ html.black .otp-page {
 }
 
 html.light .otp-card,
-html.white .otp-card {
+html.light .otp-card {
   background: #ffffff;
   border-color: rgba(0, 0, 0, 0.06);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -74,9 +74,9 @@ html.black .otp-card {
 }
 
 html.light .otp-icon,
-html.white .otp-icon {
+html.light .otp-icon {
   background: rgba(18, 140, 126, 0.1);
-  color: #128c7e;
+  color: #0f766e;
 }
 
 html.blue .otp-icon {
@@ -97,7 +97,7 @@ html.black .otp-icon {
 }
 
 html.light .otp-title,
-html.white .otp-title {
+html.light .otp-title {
   color: #111b21;
 }
 
@@ -117,7 +117,7 @@ html.black .otp-title {
 }
 
 html.light .otp-desc,
-html.white .otp-desc {
+html.light .otp-desc {
   color: #667781;
 }
 
@@ -134,8 +134,8 @@ html.black .otp-desc {
 }
 
 html.light .otp-desc strong,
-html.white .otp-desc strong {
-  color: #128c7e;
+html.light .otp-desc strong {
+  color: #0f766e;
 }
 
 html.blue .otp-desc strong {
@@ -172,16 +172,25 @@ html.black .otp-desc strong {
   border-color: #00a884;
 }
 
+.otp-digit:focus-visible {
+  outline: 2px solid #00a884;
+  outline-offset: 2px;
+}
+
+html.light .otp-digit:focus-visible {
+  outline-color: #0f766e;
+}
+
 html.light .otp-digit,
-html.white .otp-digit {
+html.light .otp-digit {
   background: rgba(0, 0, 0, 0.03);
   border-color: rgba(0, 0, 0, 0.1);
   color: #111b21;
 }
 
 html.light .otp-digit:focus,
-html.white .otp-digit:focus {
-  border-color: #128c7e;
+html.light .otp-digit:focus {
+  border-color: #0f766e;
 }
 
 html.blue .otp-digit {
@@ -210,7 +219,7 @@ html.black .otp-digit:focus {
 }
 
 html.light .otp-timer,
-html.white .otp-timer {
+html.light .otp-timer {
   color: #667781;
 }
 
@@ -227,7 +236,7 @@ html.black .otp-timer {
 }
 
 html.light .otp-timer strong,
-html.white .otp-timer strong {
+html.light .otp-timer strong {
   color: #111b21;
 }
 
@@ -266,14 +275,12 @@ html.black .otp-timer strong {
   cursor: not-allowed;
 }
 
-html.light .otp-verify-btn,
-html.white .otp-verify-btn {
-  background: #128c7e;
+html.light .otp-verify-btn {
+  background: #0f766e;
 }
 
-html.light .otp-verify-btn:hover:not(:disabled),
-html.white .otp-verify-btn:hover:not(:disabled) {
-  background: #075e54;
+html.light .otp-verify-btn:hover:not(:disabled) {
+  background: #115e59;
 }
 
 html.blue .otp-verify-btn {
@@ -318,13 +325,13 @@ html.black .otp-verify-btn:hover:not(:disabled) {
 }
 
 html.light .otp-resend-btn,
-html.white .otp-resend-btn {
+html.light .otp-resend-btn {
   color: #667781;
   border-color: rgba(0, 0, 0, 0.08);
 }
 
 html.light .otp-resend-btn:hover:not(:disabled),
-html.white .otp-resend-btn:hover:not(:disabled) {
+html.light .otp-resend-btn:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.03);
   color: #111b21;
 }

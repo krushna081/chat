@@ -14,15 +14,19 @@ const messageSchema = new mongoose.Schema(
     },
     encryptedMessage: {
       type: String,
-      required: false,
-    },
-    message: {
-      type: String,
-      required: false,
+      required: true,
+      match: [/^[a-f0-9]+$/, 'Invalid encrypted message'],
+      maxlength: [131_072, 'Encrypted message is too large'],
     },
     iv: {
       type: String,
-      default: null,
+      required: true,
+      match: [/^[a-f0-9]{24}$/, 'Invalid initialization vector'],
+    },
+    // Legacy field. New messages must never store plaintext.
+    message: {
+      type: String,
+      select: false,
     },
     deliveryStatus: {
       type: String,
@@ -31,18 +35,13 @@ const messageSchema = new mongoose.Schema(
     },
     expiresAt: {
       type: Date,
-      index: { expires: 0 }, // TTL index for auto-deletion
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-      index: true,
+      default: null,
     },
   },
   { timestamps: true }
 );
 
-// Compound index for efficient queries
 messageSchema.index({ roomId: 1, createdAt: -1 });
+messageSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export default mongoose.model('Message', messageSchema);

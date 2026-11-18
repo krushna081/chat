@@ -1,589 +1,231 @@
-# API Documentation - SecureChat
+# API reference
 
-Complete REST API reference for SecureChat backend.
+Base URL in the single-service deployment: `/api`.
 
-## Base URL
-
-Development: ``
-Production: ``
-
-## Authentication
-
-All protected routes require:
-- Authorization header: `Bearer <accessToken>`
-- Or cookie: `accessToken=<token>`
-
-## Response Format
-
-All responses follow standard JSON format:
+All responses are JSON. Errors use:
 
 ```json
 {
-  "success": true/false,
-  "message": "Status message",
-  "data": {
-    // Response data
-  },
-  "error": "Error details (if failed)"
+  "success": false,
+  "message": "Human-readable message"
 }
 ```
 
----
+Authentication uses httpOnly cookies. Successful signup verification, login, and refresh set:
 
-# Auth Endpoints
+- `accessToken` — httpOnly, path `/`, short-lived.
+- `refreshToken` — httpOnly, path `/api/auth`, longer-lived.
 
-## POST /auth/signup
+Browsers must send cookies (`withCredentials` / same-origin fetch). The API does not return tokens in JSON. Mutating requests from browsers must include an allowed `Origin`; in production, arbitrary origins and missing origins are rejected.
 
-Register a new user account.
+## Health
 
-**Request:**
+### `GET /api/health`
+
+Public. Returns `{ success: true, service: "relaychat", status: "ok", timestamp }`.
+
+## Auth
+
+### `POST /api/auth/signup`
+
 ```json
-{
-  "username": "johndoe",
-  "email": "john@example.com",
-  "password": "SecurePass123!@"
-}
+{ "username": "krushna_081", "email": "user@example.com", "password": "RelayChat1!" }
 ```
 
-**Response (200):**
+Requests a verification code for a new account. The response is deliberately generic:
+
 ```json
-{
-  "success": true,
-  "message": "OTP sent to email",
-  "tempData": {
-    "username": "johndoe",
-    "email": "john@example.com",
-    "password": "hashed"
-  }
-}
+{ "success": true, "message": "If the details are available, a verification code has been sent" }
 ```
 
-**Errors:**
-- `400` - Invalid input or user already exists
-- `500` - Server error
+Username: 3–24 characters, letters/numbers/dot/dash/underscore. Password: 8–72 characters with uppercase, lowercase, number, and symbol. Rate limited.
 
----
+### `POST /api/auth/verify-otp`
 
-## POST /auth/verify-otp
-
-Verify email OTP and create account.
-
-**Request:**
 ```json
 {
-  "email": "john@example.com",
+  "email": "user@example.com",
+  "username": "krushna_081",
   "otp": "123456",
-  "username": "johndoe",
-  "password": "SecurePass123!@"
+  "password": "RelayChat1!"
 }
 ```
 
-**Response (201):**
+On success sets auth cookies and returns:
+
+```json
+{ "success": true, "message": "Account created", "user": { "...": "..." } }
+```
+
+The password is re-sent because the signup page does not carry it through navigation state. OTPs expire after five minutes and have a limited number of attempts.
+
+### `POST /api/auth/login`
+
+```json
+{ "email": "user@example.com", "password": "RelayChat1!" }
+```
+
+On success sets auth cookies and returns the user. Failed passwords are rate limited and accounts lock temporarily after repeated failures. The response does not reveal whether an email exists.
+
+### `POST /api/auth/refresh`
+
+Reads the refresh cookie, validates the user's session version, reissues both cookies, and returns the user. Returns `401` when the refresh token is missing, expired, invalid, or revoked.
+
+### `POST /api/auth/logout`
+
+Clears cookies, increments the user's `tokenVersion` (invalidating existing sessions), and disconnects that user's live Socket.IO connections. Always returns success when the request is well-formed.
+
+### `POST /api/auth/resend-otp`
+
+```json
+{ "email": "user@example.com" }
+```
+
+Generic response. Sends a new code when there is no verified account for the email; accounts that are already verified receive no code. Rate limited.
+
+### `POST /api/auth/forgot-password-request`
+
+```json
+{ "email": "user@example.com" }
+```
+
+Generic response that does not reveal whether an account exists. Rate limited. Creates a password-reset OTP when the account exists.
+
+### `POST /api/auth/verify-reset-otp`
+
+```json
+{ "email": "user@example.com", "otp": "123456", "newPassword": "NewRelayChat1!" }
+```
+
+Validates the reset code and password policy, updates the password, increments `tokenVersion`, clears cookies, and disconnects live sockets. All existing sessions are invalidated.
+
+## Chat rooms
+
+All chat routes require authentication.
+
+### `POST /api/chat/create-room`
+
 ```json
 {
-  "success": true,
-  "message": "User created successfully",
-  "user": {
-    "_id": "507f1f77bcf86cd799439011",
-    "username": "johndoe",
-    "email": "john@example.com",
-    "isEmailVerified": true,
-    "theme": "dark"
-  }
-}
-```
-
-**Cookies Set:**
-- `accessToken` (15m expiry)
-- `refreshToken` (7d expiry)
-
-**Errors:**
-- `400` - Invalid OTP or max attempts exceeded
-- `404` - OTP not found or expired
-
----
-
-## POST /auth/login
-
-Login user account.
-
-**Request:**
-```json
-{
-  "email": "john@example.com",
-  "password": "SecurePass123!@"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Login successful",
-  "user": {
-    "_id": "507f1f77bcf86cd799439011",
-    "username": "johndoe",
-    "email": "john@example.com",
-    "isOnline": true,
-    "lastSeen": "2024-01-15T10:30:00Z"
-  }
-}
-```
-
-**Errors:**
-- `400` - Invalid credentials
-- `400` - Email not verified
-
----
-
-## POST /auth/refresh
-
-Refresh access token using refresh token.
-
-**Request:**
-```
-Cookie: refreshToken=<token>
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Token refreshed"
-}
-```
-
-**Errors:**
-- `401` - Invalid or expired refresh token
-
----
-
-## POST /auth/logout
-
-Logout user.
-
-**Request:**
-```
-GET /auth/logout
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Logged out successfully"
-}
-```
-
----
-
-## POST /auth/resend-otp
-
-Resend OTP to email.
-
-**Request:**
-```json
-{
-  "email": "john@example.com"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "OTP resent"
-}
-```
-
----
-
-# Chat Endpoints
-
-All chat endpoints require authentication.
-
-## POST /chat/create-room
-
-Create a new chat room.
-
-**Request:**
-```json
-{
-  "roomName": "Tech Discussion",
+  "roomName": "Project room",
   "messageExpiry": "24h",
-  "password": "optional_password"
+  "password": "optional-room-password",
+  "roomPicture": "https://example.com/room.png"
 }
 ```
 
-**Parameters:**
-- `roomName` (string, required): Name of chat room
-- `messageExpiry` (string): "1h", "12h", or "24h"
-- `password` (string, optional): For password-protected rooms
+`messageExpiry` is one of `1h`, `24h`, `3d`, `1w`, or `permanent`. A non-empty password makes the room private; it must be 8–72 characters. `roomPicture` must be an HTTPS URL or a supported raster data URL under 512 KB.
 
-**Response (201):**
+On success returns the safe room summary **plus the room encryption key** for the creator:
+
 ```json
 {
   "success": true,
-  "message": "Chat room created",
   "chatRoom": {
-    "_id": "507f1f77bcf86cd799439011",
-    "roomId": "a1b2c3d4e5f6g7h8",
-    "roomName": "Tech Discussion",
-    "participants": ["507f1f77bcf86cd799439011"],
-    "creator": "507f1f77bcf86cd799439011",
+    "_id": "...",
+    "roomId": "0123456789abcdef",
+    "roomName": "Project room",
+    "isPrivate": true,
+    "participantCount": 1,
     "messageExpiry": "24h",
-    "isPrivate": false,
-    "createdAt": "2024-01-15T10:30:00Z"
+    "roomKey": "<64 hex characters>"
   }
 }
 ```
 
----
+### `POST /api/chat/join-room`
 
-## POST /chat/join-room
-
-Join an existing chat room.
-
-**Request:**
 ```json
-{
-  "roomId": "a1b2c3d4e5f6g7h8",
-  "password": "room_password"
-}
+{ "roomId": "0123456789abcdef", "password": "optional-room-password" }
 ```
 
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Joined room",
-  "chatRoom": {
-    "_id": "507f1f77bcf86cd799439011",
-    "roomId": "a1b2c3d4e5f6g7h8",
-    "roomName": "Tech Discussion",
-    "participants": ["507f1f77bcf86cd799439011", "507f1f77bcf86cd799439012"],
-    "messageExpiry": "24h"
-  }
-}
-```
+A new member of a private room must supply the password. Existing members can rejoin without re-entering it. Public rooms do not require a password. Returns the safe room summary plus `roomKey`.
 
-**Errors:**
-- `404` - Room not found
-- `403` - Invalid password
+### `GET /api/chat/rooms`
 
----
+Returns public rooms and private rooms the caller belongs to. The response never contains room passwords or encryption keys in the list. Each item includes `isMember` and `participantCount`; it does not expose the participant list.
 
-## GET /chat/rooms
+### `GET /api/chat/messages/:roomId?page=1`
 
-Get all chat rooms for authenticated user.
+Requires membership in the room. Returns up to 50 newest messages per page in chronological order:
 
-**Query Parameters:**
-- None
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "chatRooms": [
-    {
-      "_id": "507f1f77bcf86cd799439011",
-      "roomId": "a1b2c3d4e5f6g7h8",
-      "roomName": "Tech Discussion",
-      "participants": ["507f1f77bcf86cd799439011"],
-      "creator": {
-        "_id": "507f1f77bcf86cd799439011",
-        "username": "johndoe"
-      },
-      "messageExpiry": "24h",
-      "lastActivity": "2024-01-15T14:20:00Z"
-    }
-  ]
-}
-```
-
----
-
-## GET /chat/messages/:roomId
-
-Get messages from a chat room (paginated).
-
-**Query Parameters:**
-- `page` (number, default: 1): Page number
-- `limit` (number, default: 50): Messages per page
-
-**Response (200):**
 ```json
 {
   "success": true,
   "messages": [
     {
-      "_id": "507f1f77bcf86cd799439011",
-      "roomId": "a1b2c3d4e5f6g7h8",
-      "senderId": {
-        "_id": "507f1f77bcf86cd799439011",
-        "username": "johndoe"
-      },
-      "encryptedMessage": "e3b0c44298fc1c14...",
-      "iv": "a1b2c3d4e5f6g7h8i9j0k1l2",
+      "_id": "...",
+      "roomId": "0123456789abcdef",
+      "senderId": "...",
+      "senderName": "krushna_081",
+      "senderAvatar": null,
+      "encryptedMessage": "<hex ciphertext>",
+      "iv": "<24 hex characters>",
       "deliveryStatus": "delivered",
-      "createdAt": "2024-01-15T10:30:00Z"
+      "createdAt": "...",
+      "expiresAt": "..."
     }
   ],
-  "pagination": {
-    "page": 1,
-    "pageSize": 50,
-    "total": 150,
-    "pages": 3
-  }
+  "pagination": { "page": 1, "pageSize": 50, "total": 1, "pages": 1 }
 }
 ```
 
----
+Plaintext is never returned by the API.
 
-## POST /chat/leave/:roomId
+### `POST /api/chat/leave/:roomId`
 
-Leave a chat room.
+Removes the caller from the room and removes the caller's sockets from the Socket.IO room. The caller must already be a member.
 
-**Request:**
-```
-POST /chat/leave/a1b2c3d4e5f6g7h8
-```
+## User
 
-**Response (200):**
+### `GET /api/user/profile`
+
+Returns the authenticated user without password or session internals.
+
+### `PUT /api/user/profile`
+
+Allowed fields: `username`, `avatar`, `theme`. `theme` is `dark` or `light`. `avatar` accepts `null`, an HTTPS URL, or a supported raster data URL under 512 KB. Email, password, and privilege fields cannot be changed here.
+
+### `POST /api/user/mute-notifications`
+
 ```json
-{
-  "success": true,
-  "message": "Left room"
-}
+{ "roomId": "0123456789abcdef" }
 ```
 
----
+Adds the room to the user's muted list. The caller must be a member.
 
-# User Endpoints
+### `POST /api/user/unmute-notifications`
 
-All user endpoints require authentication.
+Same input; removes the room from the muted list.
 
-## GET /user/profile
+## Socket.IO
 
-Get authenticated user's profile.
+Connect with `withCredentials: true` to the same origin. The server authenticates the socket from the access cookie, then validates the user's session version. Tokens are not accepted in the Socket.IO handshake payload.
 
-**Response (200):**
-```json
-{
-  "success": true,
-  "user": {
-    "_id": "507f1f77bcf86cd799439011",
-    "username": "johndoe",
-    "email": "john@example.com",
-    "isEmailVerified": true,
-    "avatar": null,
-    "lastSeen": "2024-01-15T14:20:00Z",
-    "isOnline": true,
-    "theme": "cyber",
-    "notificationMuted": [],
-    "createdAt": "2024-01-10T08:00:00Z"
-  }
-}
-```
+### Client to server
 
----
+| Event          | Payload                            |
+| -------------- | ---------------------------------- |
+| `join_room`    | `roomId` string                    |
+| `leave_room`   | `roomId` string                    |
+| `send_message` | `{ roomId, encryptedMessage, iv }` |
+| `typing`       | `roomId` string                    |
+| `stop_typing`  | `roomId` string                    |
+| `message_read` | `{ messageId }`                    |
 
-## PUT /user/profile
+`send_message` rejects plaintext and malformed ciphertext. The server verifies membership again before storing the message. Messages are limited to 20 per 10 seconds per socket.
 
-Update user profile.
+### Server to client
 
-**Request:**
-```json
-{
-  "username": "newusername",
-  "theme": "cyber"
-}
-```
+| Event                 | Payload                                                       |
+| --------------------- | ------------------------------------------------------------- |
+| `room_joined`         | `{ roomId }`                                                  |
+| `user_joined`         | `{ userId, username, message }`                               |
+| `receive_message`     | encrypted message fields plus `senderName` and `senderAvatar` |
+| `app_error`           | `{ message }`                                                 |
+| `user_typing`         | `{ userId }`                                                  |
+| `user_stopped_typing` | `{ userId }`                                                  |
+| `message_read`        | `{ messageId, userId }`                                       |
+| `connect_error`       | Authentication or connection failure                          |
 
-**Response (200):**
-```json
-{
-  "success": true,
-  "user": {
-    "_id": "507f1f77bcf86cd799439011",
-    "username": "newusername",
-    "theme": "cyber"
-  }
-}
-```
-
----
-
-## POST /user/mute-notifications
-
-Mute notifications for a room.
-
-**Request:**
-```json
-{
-  "roomId": "a1b2c3d4e5f6g7h8"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "user": {
-    "notificationMuted": ["a1b2c3d4e5f6g7h8"]
-  }
-}
-```
-
----
-
-## POST /user/unmute-notifications
-
-Unmute notifications for a room.
-
-**Request:**
-```json
-{
-  "roomId": "a1b2c3d4e5f6g7h8"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "user": {
-    "notificationMuted": []
-  }
-}
-```
-
----
-
-# Socket.io Events
-
-Real-time communication using Socket.io.
-
-## Client → Server
-
-### join_room
-User joins a chat room.
-```javascript
-socket.emit('join_room', 'a1b2c3d4e5f6g7h8');
-```
-
-### send_message
-Send encrypted message.
-```javascript
-socket.emit('send_message', {
-  roomId: 'a1b2c3d4e5f6g7h8',
-  encryptedMessage: 'e3b0c44298fc1c14...',
-  iv: 'a1b2c3d4e5f6g7h8i9j0k1l2'
-});
-```
-
-### typing
-User is typing.
-```javascript
-socket.emit('typing', 'a1b2c3d4e5f6g7h8');
-```
-
-### stop_typing
-User stopped typing.
-```javascript
-socket.emit('stop_typing', 'a1b2c3d4e5f6g7h8');
-```
-
-### message_read
-Mark message as read.
-```javascript
-socket.emit('message_read', {
-  messageId: '507f1f77bcf86cd799439011'
-});
-```
-
-## Server → Client
-
-### receive_message
-New message received.
-```javascript
-socket.on('receive_message', (message) => {
-  // {
-  //   _id: "507f1f77bcf86cd799439011",
-  //   roomId: "a1b2c3d4e5f6g7h8",
-  //   senderId: "507f1f77bcf86cd799439011",
-  //   encryptedMessage: "e3b0c44298fc1c14...",
-  //   iv: "a1b2c3d4e5f6g7h8i9j0k1l2",
-  //   deliveryStatus: "delivered",
-  //   createdAt: "2024-01-15T10:30:00Z"
-  // }
-});
-```
-
-### user_joined
-User joined room.
-```javascript
-socket.on('user_joined', (data) => {
-  // { userId: "507f1f77bcf86cd799439011", message: "..." }
-});
-```
-
-### user_typing
-User is typing in room.
-```javascript
-socket.on('user_typing', (data) => {
-  // { userId: "507f1f77bcf86cd799439011" }
-});
-```
-
-### user_stopped_typing
-User stopped typing.
-```javascript
-socket.on('user_stopped_typing', (data) => {
-  // { userId: "507f1f77bcf86cd799439011" }
-});
-```
-
----
-
-# Error Codes
-
-| Code | Message | Cause |
-|------|---------|-------|
-| 400 | Bad Request | Invalid input |
-| 401 | Unauthorized | Missing or invalid token |
-| 403 | Forbidden | No permission |
-| 404 | Not Found | Resource not found |
-| 429 | Too Many Requests | Rate limit exceeded |
-| 500 | Server Error | Internal error |
-
----
-
-# Rate Limiting
-
-- Auth endpoints: 100 requests per 15 minutes per IP
-- Chat endpoints: 100 requests per 15 minutes per user
-- Socket.io: Unlimited (abuse detected server-side)
-
----
-
-# Pagination
-
-Messages use cursor-based pagination:
-- Page 1: First 50 messages
-- Page 2: Next 50 messages
-- etc.
-
----
-
-# Best Practices
-
-1. **Error Handling**: Check `success` field in response
-2. **Token Refresh**: Auto-refresh on 401 response
-3. **Socket Connection**: Maintain persistent connection
-4. **Message Encryption**: Encrypt before sending
-5. **Rate Limiting**: Implement backoff strategy
-
----
-
-**Last Updated:** January 15, 2024
+The client decrypts `encryptedMessage` with the room key it obtained from the join/create response. If decryption fails, it displays an unavailable-message placeholder rather than ciphertext.

@@ -1,103 +1,107 @@
-import { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
+import { ArrowLeft, Camera, CheckCircle, Lock, Moon, Save, Shield, Sun } from 'lucide-react';
 import { useAuthStore, useThemeStore } from '@/context/store';
 import { userAPI } from '@/services/api';
-import { ArrowLeft, Moon, Droplet, Sun, Shield, CheckCircle, Lock, Camera, Save } from 'lucide-react';
-import toast from 'react-hot-toast';
 import '@/styles/SettingsPage.css';
+
+const MAX_AVATAR_BYTES = 512 * 1024;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+const themes = [
+  {
+    value: 'dark',
+    label: 'Dark',
+    description: 'Low-light, high-contrast chat',
+    icon: Moon,
+    colors: ['#0b141a', '#1f2c33', '#00a884'],
+  },
+  {
+    value: 'light',
+    label: 'Light',
+    description: 'Bright, high-contrast chat',
+    icon: Sun,
+    colors: ['#f0f2f5', '#ffffff', '#128c7e'],
+  },
+];
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const { user, setUser } = useAuthStore();
-  const { theme, setTheme } = useThemeStore();
-  const [loading, setLoading] = useState(false);
-  
-  // Username editing
+  const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
+  const theme = useThemeStore((state) => state.theme);
+  const setTheme = useThemeStore((state) => state.setTheme);
+
+  const [loadingTheme, setLoadingTheme] = useState(false);
   const [editingUsername, setEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState(user?.username || '');
   const [usernameLoading, setUsernameLoading] = useState(false);
-  
-  // Profile picture
   const [avatarLoading, setAvatarLoading] = useState(false);
   const fileInputRef = useRef(null);
 
-  const themes = [
-    { value: 'dark', label: 'Dark', icon: Moon, desc: 'Classic dark theme', colors: ['#0b141a', '#1f2c33', '#00a884'] },
-    { value: 'blue', label: 'Ocean Blue', icon: Droplet, desc: 'Cool blue accent', colors: ['#0d1b2a', '#1e3a5f', '#38bdf8'] },
-    { value: 'white', label: 'Light', icon: Sun, desc: 'Clean & bright', colors: ['#f0f2f5', '#ffffff', '#128c7e'] },
-  ];
-
-  const handleThemeChange = async (newTheme) => {
+  const handleThemeChange = async (nextTheme) => {
+    if (nextTheme === theme || loadingTheme) return;
+    setTheme(nextTheme);
+    setLoadingTheme(true);
     try {
-      setLoading(true);
-      await userAPI.updateProfile({ theme: newTheme });
-      setTheme(newTheme);
-      toast.success('Theme updated');
+      await userAPI.updateProfile({ theme: nextTheme });
     } catch {
-      toast.error('Failed to update theme');
+      toast.error('Theme applied locally, but your preference could not be saved');
     } finally {
-      setLoading(false);
+      setLoadingTheme(false);
     }
   };
 
   const handleUsernameSave = async () => {
-    if (!newUsername.trim() || newUsername === user?.username) {
+    const username = newUsername.trim();
+    if (!username || username === user?.username) {
       setEditingUsername(false);
       return;
     }
-    if (newUsername.length < 3) {
-      toast.error('Username must be at least 3 characters');
+    if (username.length < 3 || username.length > 24) {
+      toast.error('Username must be between 3 and 24 characters');
       return;
     }
-    
+
     setUsernameLoading(true);
     try {
-      const response = await userAPI.updateProfile({ username: newUsername.trim() });
-      const updatedUser = { ...user, username: newUsername.trim() };
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      const response = await userAPI.updateProfile({ username });
+      setUser(response.data.user);
       setEditingUsername(false);
       toast.success('Username updated');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update username');
+      toast.error(error.response?.data?.message || 'Could not update username');
     } finally {
       setUsernameLoading(false);
     }
   };
 
-  const handleAvatarUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const handleAvatarUpload = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image must be less than 2MB');
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      toast.error('Choose a PNG, JPEG, GIF, or WebP image');
       return;
     }
-
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      toast.error('Please upload a valid image (JPEG, PNG, GIF, WebP)');
+    if (file.size > MAX_AVATAR_BYTES) {
+      toast.error('Image must be 512 KB or smaller');
       return;
     }
 
     const reader = new FileReader();
-    reader.onerror = () => {
-      toast.error('Failed to read image file');
-    };
+    reader.onerror = () => toast.error('Could not read the image');
     reader.onload = async () => {
-      const base64 = reader.result;
       setAvatarLoading(true);
       try {
-        const response = await userAPI.updateProfile({ avatar: base64 });
-        const updatedUser = { ...user, avatar: response.data.user.avatar };
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        const response = await userAPI.updateProfile({ avatar: reader.result });
+        setUser(response.data.user);
         toast.success('Profile picture updated');
       } catch (error) {
-        console.error('Avatar upload error:', error);
-        const errorMessage = error?.response?.data?.message || 'Failed to upload profile picture';
-        toast.error(errorMessage);
+        toast.error(error.response?.data?.message || 'Could not update profile picture');
       } finally {
         setAvatarLoading(false);
       }
@@ -107,72 +111,95 @@ export default function SettingsPage() {
 
   const getInitials = (name) => {
     if (!name) return 'U';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    return name
+      .split(/[\s._-]+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
-  const getAvatarUrl = (avatar) => {
-    if (!avatar) return null;
-    if (avatar.startsWith('http')) return avatar;
-    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://api-chat-1xj6.onrender.com'}${avatar}`;
-  };
+  const avatarUrl = user?.avatar || null;
 
   return (
     <div className="settings-page">
-      <div className="settings-header">
-        <button onClick={() => navigate('/dashboard')} className="settings-back-btn">
+      <header className="settings-header">
+        <button
+          type="button"
+          onClick={() => navigate('/dashboard')}
+          className="settings-back-btn"
+          aria-label="Back to rooms"
+        >
           <ArrowLeft size={20} />
         </button>
         <h1 className="settings-title">Settings</h1>
-      </div>
+      </header>
 
-      <div className="settings-content">
-        {/* Profile Section */}
-        <div className="settings-card profile-card">
+      <main className="settings-content">
+        <section className="settings-card profile-card" aria-labelledby="profile-heading">
+          <h2 id="profile-heading" className="visually-hidden">
+            Profile
+          </h2>
           <div className="profile-section">
-            <div className="profile-avatar-wrapper" onClick={() => fileInputRef.current?.click()}>
+            <button
+              type="button"
+              className="profile-avatar-wrapper"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Change profile picture"
+            >
               {avatarLoading ? (
                 <div className="profile-avatar-loading">
                   <div className="avatar-spinner" />
                 </div>
-              ) : getAvatarUrl(user?.avatar) ? (
-                <img src={getAvatarUrl(user.avatar)} alt="Profile" className="profile-avatar-img" />
+              ) : avatarUrl ? (
+                <img src={avatarUrl} alt="" className="profile-avatar-img" />
               ) : (
-                <div className="profile-avatar initials-avatar">
-                  {getInitials(user?.username)}
-                </div>
+                <div className="profile-avatar initials-avatar">{getInitials(user?.username)}</div>
               )}
-              <div className="avatar-overlay">
+              <span className="avatar-overlay" aria-hidden="true">
                 <Camera size={16} />
-              </div>
-            </div>
+              </span>
+            </button>
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept={ALLOWED_IMAGE_TYPES.join(',')}
               onChange={handleAvatarUpload}
-              style={{ display: 'none' }}
+              className="visually-hidden"
+              tabIndex={-1}
             />
-            
+
             <div className="profile-info">
               {editingUsername ? (
                 <div className="username-edit">
+                  <label className="visually-hidden" htmlFor="settings-username">
+                    Username
+                  </label>
                   <input
+                    id="settings-username"
                     type="text"
                     value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
+                    onChange={(event) => setNewUsername(event.target.value)}
                     className="username-input"
-                    maxLength={20}
-                    autoFocus
+                    minLength={3}
+                    maxLength={24}
                   />
                   <button
+                    type="button"
                     onClick={handleUsernameSave}
                     disabled={usernameLoading}
                     className="username-save-btn"
+                    aria-label="Save username"
                   >
-                    {usernameLoading ? 'Saving...' : <Save size={16} />}
+                    {usernameLoading ? '…' : <Save size={16} />}
                   </button>
                   <button
-                    onClick={() => { setEditingUsername(false); setNewUsername(user?.username || ''); }}
+                    type="button"
+                    onClick={() => {
+                      setEditingUsername(false);
+                      setNewUsername(user?.username || '');
+                    }}
                     className="username-cancel-btn"
                   >
                     Cancel
@@ -181,7 +208,14 @@ export default function SettingsPage() {
               ) : (
                 <div className="username-display">
                   <h2 className="profile-name">{user?.username || 'User'}</h2>
-                  <button onClick={() => setEditingUsername(true)} className="edit-username-btn">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewUsername(user?.username || '');
+                      setEditingUsername(true);
+                    }}
+                    className="edit-username-btn"
+                  >
                     Edit
                   </button>
                 </div>
@@ -189,19 +223,22 @@ export default function SettingsPage() {
               <p className="profile-email">{user?.email || ''}</p>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Theme Section */}
-        <div className="settings-card">
-          <h3 className="settings-section-title">Appearance</h3>
-          <p className="settings-section-desc">Choose your preferred theme</p>
+        <section className="settings-card" aria-labelledby="appearance-heading">
+          <h2 id="appearance-heading" className="settings-section-title">
+            Appearance
+          </h2>
+          <p className="settings-section-desc">Choose a dark or light theme.</p>
           <div className="theme-grid">
-            {themes.map(({ value, label, icon: Icon, desc, colors }) => (
+            {themes.map(({ value, label, description, icon: Icon, colors }) => (
               <motion.button
                 key={value}
+                type="button"
                 onClick={() => handleThemeChange(value)}
-                disabled={loading}
+                disabled={loadingTheme}
                 className={`theme-option ${theme === value ? 'active' : ''}`}
+                aria-pressed={theme === value}
                 whileTap={{ scale: 0.97 }}
               >
                 <div className="theme-preview" style={{ background: colors[0] }}>
@@ -211,78 +248,109 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="theme-info">
-                  <span className="theme-label">{label}</span>
-                  <span className="theme-desc">{desc}</span>
+                  <span className="theme-label">
+                    <Icon size={15} aria-hidden="true" /> {label}
+                  </span>
+                  <span className="theme-desc">{description}</span>
                 </div>
                 {theme === value && (
-                  <div className="theme-check">
+                  <span className="theme-check" aria-hidden="true">
                     <CheckCircle size={16} />
-                  </div>
+                  </span>
                 )}
               </motion.button>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Security Section */}
-        <div className="settings-card security-card">
+        <section className="settings-card security-card" aria-labelledby="security-heading">
           <div className="card-header">
-            <Shield size={20} />
-            <h3 className="settings-section-title" style={{ marginBottom: 0 }}>Security</h3>
+            <Shield size={20} aria-hidden="true" />
+            <h2
+              id="security-heading"
+              className="settings-section-title settings-section-title-inline"
+            >
+              Security
+            </h2>
           </div>
           <ul className="security-list">
             <li className="security-item">
-              <CheckCircle size={15} />
+              <CheckCircle size={15} aria-hidden="true" />
               <div>
-                <span className="security-title">End-to-End Encryption</span>
-                <span className="security-desc">All messages encrypted before leaving your device</span>
+                <span className="security-title">HttpOnly session cookies</span>
+                <span className="security-desc">
+                  Access and refresh tokens are never stored in localStorage.
+                </span>
               </div>
             </li>
             <li className="security-item">
-              <CheckCircle size={15} />
+              <CheckCircle size={15} aria-hidden="true" />
               <div>
-                <span className="security-title">Self-Destructing Messages</span>
-                <span className="security-desc">Messages auto-delete based on room timer</span>
+                <span className="security-title">Encrypted message storage</span>
+                <span className="security-desc">
+                  AES-256-GCM ciphertext is stored. Room keys are managed by the server, so this is
+                  not end-to-end encryption.
+                </span>
               </div>
             </li>
             <li className="security-item">
-              <CheckCircle size={15} />
+              <CheckCircle size={15} aria-hidden="true" />
               <div>
-                <span className="security-title">Local Key Storage</span>
-                <span className="security-desc">Encryption keys stored only on your device</span>
+                <span className="security-title">Auto-deleting messages</span>
+                <span className="security-desc">
+                  MongoDB TTL indexes remove messages after the room timer.
+                </span>
               </div>
             </li>
             <li className="security-item">
-              <CheckCircle size={15} />
+              <CheckCircle size={15} aria-hidden="true" />
               <div>
-                <span className="security-title">Zero Knowledge Architecture</span>
-                <span className="security-desc">Server never has access to your keys or messages</span>
+                <span className="security-title">Session revocation</span>
+                <span className="security-desc">
+                  Signing out or resetting a password invalidates existing sessions.
+                </span>
               </div>
             </li>
           </ul>
-        </div>
+        </section>
 
-        {/* Privacy Section */}
-        <div className="settings-card">
+        <section className="settings-card" aria-labelledby="privacy-heading">
           <div className="card-header">
-            <Lock size={20} />
-            <h3 className="settings-section-title" style={{ marginBottom: 0 }}>Privacy</h3>
+            <Lock size={20} aria-hidden="true" />
+            <h2
+              id="privacy-heading"
+              className="settings-section-title settings-section-title-inline"
+            >
+              Privacy
+            </h2>
           </div>
           <ul className="privacy-list">
-            <li><CheckCircle size={14} /> End-to-end encrypted messages</li>
-            <li><CheckCircle size={14} /> No message storage on server</li>
-            <li><CheckCircle size={14} /> Self-destructing messages</li>
-            <li><CheckCircle size={14} /> No third-party data sharing</li>
+            <li>
+              <CheckCircle size={14} aria-hidden="true" /> Room-level access control
+            </li>
+            <li>
+              <CheckCircle size={14} aria-hidden="true" /> Optional password-protected rooms
+            </li>
+            <li>
+              <CheckCircle size={14} aria-hidden="true" /> No phone number required
+            </li>
+            <li>
+              <CheckCircle size={14} aria-hidden="true" /> No third-party analytics
+            </li>
           </ul>
-        </div>
+        </section>
 
-        {/* About Section */}
-        <div className="settings-card about-card">
-          <h3 className="settings-section-title">About</h3>
-          <p className="about-desc">SecureChat combines WhatsApp-style UX with Signal-style privacy.</p>
+        <section className="settings-card about-card" aria-labelledby="about-heading">
+          <h2 id="about-heading" className="settings-section-title">
+            About
+          </h2>
+          <p className="about-desc">
+            RelayChat is a single-service chat app. React, Express, MongoDB, and Socket.IO run
+            together on one server.
+          </p>
           <p className="about-version">Version 1.0.0</p>
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }

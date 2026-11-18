@@ -1,33 +1,35 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import '@/styles/OTPVerificationPage.css';
-import { useAuthStore } from '@/context/store';
 import toast from 'react-hot-toast';
-import { Lock } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Lock, MessageCircle } from 'lucide-react';
+import { useAuthStore } from '@/context/store';
 import { authAPI } from '@/services/api';
+import { PASSWORD_REQUIREMENTS, isStrongPassword } from '@/utils/validation';
+import '@/styles/OTPVerificationPage.css';
 
 export default function OTPVerificationPage() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [timeLeft, setTimeLeft] = useState(300);
   const [canResend, setCanResend] = useState(false);
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef([]);
 
-  const { verifyOTP } = useAuthStore();
+  const verifyOTP = useAuthStore((state) => state.verifyOTP);
   const navigate = useNavigate();
   const location = useLocation();
 
   const email = location.state?.email || '';
   const username = location.state?.username || '';
-  const password = location.state?.password || '';
 
   useEffect(() => {
     if (timeLeft <= 0) {
       setCanResend(true);
-      return;
+      return undefined;
     }
-    const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+    const timer = setTimeout(() => setTimeLeft((remaining) => remaining - 1), 1000);
     return () => clearTimeout(timer);
   }, [timeLeft]);
 
@@ -36,49 +38,51 @@ export default function OTPVerificationPage() {
   }, []);
 
   const handleChange = (index, value) => {
-    if (/^\d?$/.test(value)) {
-      const newOtp = [...otp];
-      newOtp[index] = value;
-      setOtp(newOtp);
-      if (value && index < 5) {
-        inputRefs.current[index + 1]?.focus();
-      }
-    }
+    if (!/^\d?$/.test(value)) return;
+    const nextOtp = [...otp];
+    nextOtp[index] = value;
+    setOtp(nextOtp);
+    if (value && index < 5) inputRefs.current[index + 1]?.focus();
   };
 
-  const handleKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+  const handleKeyDown = (index, event) => {
+    if (event.key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
-  const handlePaste = (e) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData('text').slice(0, 6);
-    if (/^\d+$/.test(pasted)) {
-      const chars = pasted.split('');
-      const newOtp = [...otp];
-      chars.forEach((char, i) => { if (i < 6) newOtp[i] = char; });
-      setOtp(newOtp);
-      const nextEmpty = newOtp.findIndex(v => !v);
-      inputRefs.current[nextEmpty >= 0 ? nextEmpty : 5]?.focus();
-    }
+  const handlePaste = (event) => {
+    event.preventDefault();
+    const pasted = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+
+    const nextOtp = [...otp];
+    pasted.split('').forEach((character, index) => {
+      nextOtp[index] = character;
+    });
+    setOtp(nextOtp);
+    const nextEmpty = nextOtp.findIndex((value) => !value);
+    inputRefs.current[nextEmpty >= 0 ? nextEmpty : 5]?.focus();
   };
 
   const handleVerify = async () => {
     const otpString = otp.join('');
     if (otpString.length !== 6) {
-      toast.error('Please enter all 6 digits');
+      toast.error('Enter all 6 digits');
+      return;
+    }
+    if (!isStrongPassword(password)) {
+      toast.error(PASSWORD_REQUIREMENTS);
       return;
     }
 
     setLoading(true);
     try {
       await verifyOTP(email, otpString, username, password);
-      toast.success('Email verified! Welcome to SecureChat');
-      navigate('/dashboard');
+      toast.success('Email verified. Welcome to RelayChat.');
+      navigate('/dashboard', { replace: true });
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.message || 'Verification failed');
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } finally {
@@ -92,27 +96,27 @@ export default function OTPVerificationPage() {
       setOtp(['', '', '', '', '', '']);
       setTimeLeft(300);
       setCanResend(false);
-      toast.success('OTP resent to your email');
+      toast.success('If the signup is still pending, a new code was sent');
       inputRefs.current[0]?.focus();
-    } catch {
-      toast.error('Failed to resend OTP');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Could not resend the code');
     }
   };
 
   const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    const minutes = Math.floor(seconds / 60);
+    const remainder = seconds % 60;
+    return `${minutes}:${remainder.toString().padStart(2, '0')}`;
   };
 
-  if (!email) {
+  if (!email || !username) {
     return (
       <div className="otp-page">
         <div className="otp-container">
-          <p className="otp-error">No email provided</p>
-          <button onClick={() => navigate('/signup')} className="btn-primary" style={{ padding: '10px 24px' }}>
-            Back to Signup
-          </button>
+          <p className="otp-error">Start a signup before verifying an email.</p>
+          <Link to="/signup" className="btn-primary otp-inline-link">
+            Back to signup
+          </Link>
         </div>
       </div>
     );
@@ -125,12 +129,13 @@ export default function OTPVerificationPage() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="otp-icon">
-          <Lock size={32} />
+        <div className="otp-icon" aria-hidden="true">
+          <MessageCircle size={30} />
         </div>
         <h1 className="otp-title">Verify your email</h1>
         <p className="otp-desc">
-          Enter the 6-digit code sent to<br />
+          Enter the 6-digit code sent to
+          <br />
           <strong>{email}</strong>
         </p>
 
@@ -138,14 +143,18 @@ export default function OTPVerificationPage() {
           {otp.map((digit, index) => (
             <motion.input
               key={index}
-              ref={(el) => (inputRefs.current[index] = el)}
+              ref={(element) => {
+                inputRefs.current[index] = element;
+              }}
               type="text"
               inputMode="numeric"
               value={digit}
-              onChange={(e) => handleChange(index, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(index, e)}
+              onChange={(event) => handleChange(index, event.target.value)}
+              onKeyDown={(event) => handleKeyDown(index, event)}
               maxLength={1}
               className="otp-digit"
+              aria-label={`Verification digit ${index + 1}`}
+              autoComplete="one-time-code"
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               whileFocus={{ scale: 1.08 }}
@@ -153,23 +162,60 @@ export default function OTPVerificationPage() {
           ))}
         </div>
 
-        <div className="otp-timer">
+        <div className="otp-password-group">
+          <label className="otp-label" htmlFor="otp-password">
+            Password
+          </label>
+          <div className="otp-password-wrapper">
+            <Lock size={17} aria-hidden="true" />
+            <input
+              id="otp-password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Re-enter your password"
+              className="otp-password-input"
+              autoComplete="new-password"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((visible) => !visible)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
+          </div>
+          <p className="otp-hint">{PASSWORD_REQUIREMENTS}</p>
+        </div>
+
+        <div className="otp-timer" aria-live="polite">
           {canResend ? (
             <span className="timer-expired">Code expired</span>
           ) : (
-            <>Code expires in <strong>{formatTime(timeLeft)}</strong></>
+            <>
+              Code expires in <strong>{formatTime(timeLeft)}</strong>
+            </>
           )}
         </div>
 
         <button
+          type="button"
           onClick={handleVerify}
-          disabled={loading || otp.some(d => !d)}
+          disabled={loading || otp.some((digit) => !digit) || !password}
           className="otp-verify-btn"
         >
-          {loading ? 'Verifying...' : 'Verify'}
+          {loading ? (
+            <span className="otp-loading">
+              <Loader2 className="animate-spin" size={17} /> Verifying…
+            </span>
+          ) : (
+            'Verify and create account'
+          )}
         </button>
 
         <button
+          type="button"
           onClick={handleResend}
           disabled={!canResend}
           className="otp-resend-btn"

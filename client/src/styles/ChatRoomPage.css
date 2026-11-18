@@ -38,7 +38,7 @@
 }
 
 html.light .chatroom-messages-area::-webkit-scrollbar-thumb,
-html.white .chatroom-messages-area::-webkit-scrollbar-thumb {
+html.light .chatroom-messages-area::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.15);
 }
 
@@ -54,12 +54,12 @@ html.blue .chatroom-messages-area::-webkit-scrollbar-thumb {
 }
 
 html.light .chatroom-page-header,
-html.white .chatroom-page-header {
+html.light .chatroom-page-header {
   border-bottom-color: rgba(0, 0, 0, 0.06);
 }
 
 html.light .chatroom-input-area,
-html.white .chatroom-input-area {
+html.light .chatroom-input-area {
   border-top-color: rgba(0, 0, 0, 0.06);
 }
 
@@ -93,7 +93,7 @@ html.blue .chatroom-input-area {
 }
 
 html.light .typing-dots,
-html.white .typing-dots {
+html.light .typing-dots {
   background: rgba(232, 234, 235, 0.9);
 }
 
@@ -109,9 +109,15 @@ html.blue .typing-dots {
   animation: typingBounce 1.4s infinite;
 }
 
-.typing-dots span:nth-child(1) { animation-delay: 0s; }
-.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+.typing-dots span:nth-child(1) {
+  animation-delay: 0s;
+}
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
 
 /* Send button */
 .send-btn {
@@ -161,13 +167,13 @@ html.blue .typing-dots {
 }
 
 html.light .chat-input-wrapper,
-html.white .chat-input-wrapper {
+html.light .chat-input-wrapper {
   background: rgba(0, 0, 0, 0.03);
   border-color: rgba(0, 0, 0, 0.06);
 }
 
 html.light .chat-input-wrapper:focus-within,
-html.white .chat-input-wrapper:focus-within {
+html.light .chat-input-wrapper:focus-within {
   border-color: rgba(18, 140, 126, 0.3);
 }
 
@@ -189,12 +195,12 @@ html.blue .chat-input-wrapper:focus-within {
   padding: 6px 0;
   resize: none;
   outline: none;
-  max-height: 100px;
+  max-height: 120px;
   line-height: 1.5;
 }
 
 html.light .chat-input-wrapper textarea,
-html.white .chat-input-wrapper textarea {
+html.light .chat-input-wrapper textarea {
   color: #111b21;
 }
 
@@ -207,7 +213,7 @@ html.blue .chat-input-wrapper textarea {
 }
 
 html.light .chat-input-wrapper textarea::placeholder,
-html.white .chat-input-wrapper textarea::placeholder {
+html.light .chat-input-wrapper textarea::placeholder {
   color: #667781;
 }
 
@@ -281,7 +287,7 @@ html.white .chat-input-wrapper textarea::placeholder {
 }
 
 html.light .sender-avatar-initials,
-html.white .sender-avatar-initials {
+html.light .sender-avatar-initials {
   background: linear-gradient(135deg, #128c7e, #075e54);
 }
 
@@ -316,13 +322,13 @@ html.black .sender-avatar-initials {
   margin-left: 4px;
 }
 
-html.light .message-sent,
-html.white .message-sent {
-  background: linear-gradient(135deg, #128c7e, #25d366);
+html.light .message-sent {
+  background: #d9fdd8;
+  color: #111b21;
 }
 
 html.light .message-received,
-html.white .message-received {
+html.light .message-received {
   background: #ffffff;
   color: #111b21;
 }
@@ -354,9 +360,8 @@ html.black .message-received {
   color: #00a884;
 }
 
-html.light .msg-sender,
-html.white .msg-sender {
-  color: #128c7e;
+html.light .msg-sender {
+  color: #0f766e;
 }
 
 html.blue .msg-sender {
@@ -389,7 +394,7 @@ html.black .msg-sender {
 }
 
 html.light .message-received .msg-time,
-html.white .message-received .msg-time {
+html.light .message-received .msg-time {
   color: #667781;
 }
 

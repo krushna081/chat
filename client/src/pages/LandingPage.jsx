@@ -1,22 +1,54 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Lock, MessageCircle, Zap } from 'lucide-react';
+import { Lock, MessageCircle, Moon, Sun, Timer, Zap } from 'lucide-react';
+import { useThemeStore } from '@/context/store';
 import '@/styles/LandingPage.css';
 
+const features = [
+  {
+    icon: Lock,
+    title: 'Private rooms',
+    description: 'Create public rooms or protect access with a room password.',
+  },
+  {
+    icon: Timer,
+    title: 'Auto-deleting messages',
+    description: 'Choose a room timer, from one hour to one week, or keep messages permanently.',
+  },
+  {
+    icon: Zap,
+    title: 'Real-time delivery',
+    description: 'Messages and typing updates arrive instantly over Socket.IO.',
+  },
+];
+
 export default function LandingPage() {
+  const theme = useThemeStore((state) => state.theme);
+  const setTheme = useThemeStore((state) => state.setTheme);
+
   return (
     <div className="landing-page">
-      <nav className="landing-nav">
-        <div className="landing-brand">
-          <span className="brand-emoji">&#128274;</span>
-          <span className="brand-name">SecureChat</span>
-        </div>
+      <nav className="landing-nav" aria-label="Main navigation">
+        <Link to="/" className="landing-brand" aria-label="RelayChat home">
+          <span className="brand-emoji" aria-hidden="true">
+            <MessageCircle size={22} />
+          </span>
+          <span className="brand-name">RelayChat</span>
+        </Link>
         <div className="landing-nav-actions">
-          <Link to="/login">
-            <button className="nav-action-btn secondary">Sign in</button>
+          <button
+            type="button"
+            className="theme-toggle-btn"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <Link to="/login" className="nav-action-btn secondary">
+            Sign in
           </Link>
-          <Link to="/signup">
-            <button className="nav-action-btn primary">Get started</button>
+          <Link to="/signup" className="nav-action-btn primary">
+            Get started
           </Link>
         </div>
       </nav>
@@ -28,19 +60,26 @@ export default function LandingPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="hero-title">Private messaging<br />reimagined</h1>
+          <h1 className="hero-title">
+            Private rooms.
+            <br />
+            Real-time conversation.
+          </h1>
           <p className="hero-desc">
-            End-to-end encrypted. Self-destructing messages.<br className="hero-br" />
-            Your conversations stay between you.
+            RelayChat brings public and password-protected rooms, encrypted message storage, and
+            auto-deleting timers into one focused chat app.
           </p>
           <div className="hero-cta">
-            <Link to="/signup">
-              <button className="cta-primary">Start free</button>
+            <Link to="/signup" className="cta-primary">
+              Start free
             </Link>
-              <Link to="/how-it-works">
-            <button className="cta-secondary">See how it works</button>
+            <Link to="/how-it-works" className="cta-secondary">
+              See how it works
             </Link>
           </div>
+          <p className="hero-note">
+            RelayChat uses server-managed encryption keys. It is not end-to-end encrypted.
+          </p>
         </motion.div>
 
         <motion.div
@@ -49,15 +88,13 @@ export default function LandingPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.4 }}
         >
-          {[
-            { icon: '&#128274;', title: 'End-to-End Encrypted', desc: 'AES-256 GCM encryption' },
-            { icon: '&#128340;', title: 'Self-Destructing', desc: 'Messages auto-delete' },
-            { icon: '&#9889;', title: 'Real-Time', desc: 'Instant messaging' },
-          ].map((feature, i) => (
-            <div key={i} className="feature-card">
-              <div className="feature-icon" dangerouslySetInnerHTML={{ __html: feature.icon }} />
-              <h3 className="feature-title">{feature.title}</h3>
-              <p className="feature-desc">{feature.desc}</p>
+          {features.map(({ icon: Icon, title, description }) => (
+            <div key={title} className="feature-card">
+              <div className="feature-icon" aria-hidden="true">
+                <Icon size={24} />
+              </div>
+              <h2 className="feature-title">{title}</h2>
+              <p className="feature-desc">{description}</p>
             </div>
           ))}
         </motion.div>

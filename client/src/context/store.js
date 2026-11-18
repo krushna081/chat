@@ -1,49 +1,63 @@
 import { create } from 'zustand';
 import { authAPI, chatAPI, userAPI } from '../services/api.js';
+import { clearStoredEncryptionKeys } from '../utils/encryption.js';
+
+let initializationPromise = null;
+
+const getErrorMessage = (error, fallback) =>
+  error.response?.data?.message || error.message || fallback;
 
 export const useAuthStore = create((set, get) => ({
   user: null,
   isAuthenticated: false,
   loading: true,
+  initialized: false,
   error: null,
 
   initializeAuth: async () => {
-    const savedUser = localStorage.getItem('user');
-    const savedToken = localStorage.getItem('accessToken');
-    
-    if (savedUser && savedToken) {
+    if (get().initialized) return;
+    if (initializationPromise) return initializationPromise;
+
+    initializationPromise = (async () => {
+      set({ loading: true, error: null });
       try {
-        await get().refreshUser();
-        set({ loading: false });
-      } catch (error) {
-        localStorage.removeItem('user');
-        localStorage.removeItem('accessToken');
-        set({ user: null, isAuthenticated: false, loading: false });
+        const response = await authAPI.refreshToken();
+        set({
+          user: response.data.user,
+          isAuthenticated: true,
+          loading: false,
+          initialized: true,
+        });
+      } catch {
+        set({
+          user: null,
+          isAuthenticated: false,
+          loading: false,
+          initialized: true,
+        });
+      } finally {
+        initializationPromise = null;
       }
-    } else {
-      set({ loading: false });
-    }
+    })();
+
+    return initializationPromise;
   },
 
   login: async (email, password) => {
     set({ loading: true, error: null });
     try {
       const response = await authAPI.login({ email, password });
-      const { user, accessToken } = response.data;
       set({
-        user,
+        user: response.data.user,
         isAuthenticated: true,
         loading: false,
+        initialized: true,
       });
-      localStorage.setItem('user', JSON.stringify(user));
-      if (accessToken) {
-        localStorage.setItem('accessToken', accessToken);
-      }
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Login failed';
-      set({ error: errorMsg, loading: false });
-      throw new Error(errorMsg);
+      const message = getErrorMessage(error, 'Sign in failed');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   },
 
@@ -51,11 +65,17 @@ export const useAuthStore = create((set, get) => ({
     try {
       await authAPI.logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Logout request failed:', error.message);
     }
-    set({ user: null, isAuthenticated: false });
-    localStorage.removeItem('user');
-    localStorage.removeItem('accessToken');
+    clearStoredEncryptionKeys();
+    useChatStore.getState().reset();
+    set({
+      user: null,
+      isAuthenticated: false,
+      loading: false,
+      initialized: true,
+      error: null,
+    });
   },
 
   signup: async (username, email, password) => {
@@ -65,9 +85,9 @@ export const useAuthStore = create((set, get) => ({
       set({ loading: false });
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Signup failed';
-      set({ error: errorMsg, loading: false });
-      throw new Error(errorMsg);
+      const message = getErrorMessage(error, 'Sign up failed');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   },
 
@@ -75,33 +95,27 @@ export const useAuthStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await authAPI.verifyOTP({ email, otp, username, password });
-      const { user, accessToken } = response.data;
       set({
-        user,
+        user: response.data.user,
         isAuthenticated: true,
         loading: false,
+        initialized: true,
       });
-      localStorage.setItem('user', JSON.stringify(user));
-      if (accessToken) {
-        localStorage.setItem('accessToken', accessToken);
-      }
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'OTP verification failed';
-      set({ error: errorMsg, loading: false });
-      throw new Error(errorMsg);
+      const message = getErrorMessage(error, 'Verification failed');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   },
 
   refreshUser: async () => {
     try {
       const response = await userAPI.getProfile();
-      const userData = response.data.user;
-      set({ user: userData, isAuthenticated: true });
-      localStorage.setItem('user', JSON.stringify(userData));
-      return userData;
+      set({ user: response.data.user, isAuthenticated: true });
+      return response.data.user;
     } catch (error) {
-      console.error('Refresh user error:', error);
+      set({ user: null, isAuthenticated: false });
       throw error;
     }
   },
@@ -113,9 +127,9 @@ export const useAuthStore = create((set, get) => ({
       set({ loading: false });
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Failed to send OTP';
-      set({ error: errorMsg, loading: false });
-      throw new Error(errorMsg);
+      const message = getErrorMessage(error, 'Could not request a reset code');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   },
 
@@ -126,14 +140,26 @@ export const useAuthStore = create((set, get) => ({
       set({ loading: false });
       return response.data;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Invalid OTP';
-      set({ error: errorMsg, loading: false });
-      throw new Error(errorMsg);
+      const message = getErrorMessage(error, 'Could not reset password');
+      set({ error: message, loading: false });
+      throw new Error(message);
     }
   },
 
-  setUser: (user) => set({ user, isAuthenticated: !!user }),
-  
+  authExpired: () => {
+    clearStoredEncryptionKeys();
+    useChatStore.getState().reset();
+    set({
+      user: null,
+      isAuthenticated: false,
+      loading: false,
+      initialized: true,
+      error: null,
+    });
+  },
+
+  setUser: (user) => set({ user, isAuthenticated: Boolean(user) }),
+
   resetLoading: () => set({ loading: false }),
 }));
 
@@ -151,7 +177,7 @@ export const useChatStore = create((set, get) => ({
       const response = await chatAPI.getChatRooms();
       set({ chatRooms: response.data.chatRooms, loading: false });
     } catch (error) {
-      console.error('Fetch rooms error:', error);
+      console.error('Fetch rooms failed:', error.message);
       set({ loading: false });
     }
   },
@@ -160,7 +186,7 @@ export const useChatStore = create((set, get) => ({
 
   addMessage: (message) => {
     const { messages } = get();
-    if (!messages.find((m) => m._id === message._id)) {
+    if (!messages.find((item) => String(item._id) === String(message._id))) {
       set({ messages: [...messages, message] });
     }
   },
@@ -175,9 +201,10 @@ export const useChatStore = create((set, get) => ({
   },
 
   removeTypingUser: (userId) => {
-    const { typingUsers } = get();
-    set({ typingUsers: typingUsers.filter((id) => id !== userId) });
+    set({ typingUsers: get().typingUsers.filter((id) => id !== userId) });
   },
+
+  clearTypingUsers: () => set({ typingUsers: [] }),
 
   addOnlineUser: (userId) => {
     const { onlineUsers } = get();
@@ -187,16 +214,39 @@ export const useChatStore = create((set, get) => ({
   },
 
   removeOnlineUser: (userId) => {
-    const { onlineUsers } = get();
-    set({ onlineUsers: onlineUsers.filter((id) => id !== userId) });
+    set({ onlineUsers: get().onlineUsers.filter((id) => id !== userId) });
   },
+
+  reset: () =>
+    set({
+      chatRooms: [],
+      currentRoom: null,
+      messages: [],
+      loading: false,
+      typingUsers: [],
+      onlineUsers: [],
+    }),
 }));
 
+const readStoredTheme = () => {
+  try {
+    const stored = localStorage.getItem('theme');
+    return stored === 'light' ? 'light' : 'dark';
+  } catch {
+    return 'dark';
+  }
+};
+
 export const useThemeStore = create((set) => ({
-  theme: localStorage.getItem('theme') || 'dark',
+  theme: readStoredTheme(),
 
   setTheme: (theme) => {
-    localStorage.setItem('theme', theme);
-    set({ theme });
+    const nextTheme = theme === 'light' ? 'light' : 'dark';
+    try {
+      localStorage.setItem('theme', nextTheme);
+    } catch {
+      // Theme persistence is optional.
+    }
+    set({ theme: nextTheme });
   },
 }));

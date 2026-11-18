@@ -1,0 +1,12 @@
+process.env.NODE_ENV = 'test';
+process.env.PORT = '5001';
+process.env.MONGODB_URI = 'mongodb://127.0.0.1:27017/relaychat-test';
+process.env.JWT_SECRET = 'test-access-secret-0123456789abcdef';
+process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-0123456789abcdef';
+process.env.CLIENT_URL = 'http://localhost:5173';
+process.env.ALLOWED_ORIGINS = 'http://localhost:4173';
+process.env.COOKIE_SECURE = 'false';
+process.env.COOKIE_SAME_SITE = 'lax';
+process.env.SERVE_CLIENT = 'false';
+process.env.RESEND_API_KEY = '';
+process.env.TRUST_PROXY = 'false';
